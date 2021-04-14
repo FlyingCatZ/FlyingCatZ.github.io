@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="en">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.0.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":true,"dimmer":true},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言&amp;emsp;&amp;emsp;Linux中关于dma的操作非常常见，一些dma驱动独立到drivers/dma/目录下，架构相关的dma操作放在arch/arm/mm/目录下，还有在drivers/base/目录下也有关于dma的驱动，以及drivers/dma-buf/目录下所形成的dma-buf架构，因此有必要梳理一下dma的框架">
+<meta name="keywords" content="Linux,驱动,dma">
+<meta property="og:type" content="article">
+<meta property="og:title" content="dma">
+<meta property="og:url" content="http://yoursite.com/2021/03/04/dma/index.html">
+<meta property="og:site_name" content="ZhangJian&#39;s Blog">
+<meta property="og:description" content="前言&amp;emsp;&amp;emsp;Linux中关于dma的操作非常常见，一些dma驱动独立到drivers/dma/目录下，架构相关的dma操作放在arch/arm/mm/目录下，还有在drivers/base/目录下也有关于dma的驱动，以及drivers/dma-buf/目录下所形成的dma-buf架构，因此有必要梳理一下dma的框架">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/DMA_ut94kz.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/DMA_device_oxv55a.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875688/samples/DMA/image-20200827101651829_ynif9a.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875688/samples/DMA/image-20200829090605153_l6swsx.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200829092028125_z3sk9c.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875687/samples/DMA/dma%E6%A1%86%E6%9E%B6_ogfn0e.svg">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875687/samples/DMA/dma_seq_dduobt.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/dma_tx_i7hscd.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875687/samples/DMA/dma_seq_arch_gse1vd.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875688/samples/DMA/func_seq_xkxvvq.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921145912242_hhyelf.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921150114291_nijvbe.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921155220167_vziqns.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921161715546_oett5j.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/device_model-1600679671585_rn5dts.png">
+<meta property="og:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200923091128578_w4xg1t.png">
+<meta property="og:updated_time" content="2021-03-04T16:42:03.822Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="dma">
+<meta name="twitter:description" content="前言&amp;emsp;&amp;emsp;Linux中关于dma的操作非常常见，一些dma驱动独立到drivers/dma/目录下，架构相关的dma操作放在arch/arm/mm/目录下，还有在drivers/base/目录下也有关于dma的驱动，以及drivers/dma-buf/目录下所形成的dma-buf架构，因此有必要梳理一下dma的框架">
+<meta name="twitter:image" content="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/DMA_ut94kz.png">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="ZhangJian's Blog" type="application/atom+xml">
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2021/03/04/dma/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>dma | ZhangJian's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">ZhangJian's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>About</a>
+
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>Search</a>
+        </li>
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="Searching..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+  
+  
+  
+  
+
+  
+
+  <a href="https://github.com/FlyingCatZ" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewbox="0 0 250 250" style="fill: #222; color: #fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a>
+
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/03/04/dma/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="ZhangJian">
+      <meta itemprop="description" content="厚积薄发">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ZhangJian's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">dma
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2021-03-04 23:08:25" itemprop="dateCreated datePublished" datetime="2021-03-04T23:08:25+08:00">2021-03-04</time>
+            
+
+            
+              
+
+              
+                
+                <span class="post-meta-divider">|</span>
+                
+
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-calendar-check-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">Edited on</span>
+                
+                <time title="Modified: 2021-03-05 00:42:03" itemprop="dateModified" datetime="2021-03-05T00:42:03+08:00">2021-03-05</time>
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+			
+			
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <span class="post-meta-item-text">Comments: </span>
+                <a href="/2021/03/04/dma/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2021/03/04/dma/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+            <span id="/2021/03/04/dma/" class="leancloud_visitors" data-flag-title="dma">
+              <span class="post-meta-divider">|</span>
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Views: </span>
+              
+                <span class="leancloud-visitors-count"></span>
+            </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <script src="/assets/js/APlayer.min.js"> </script><h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>&emsp;&emsp;Linux中关于dma的操作非常常见，一些dma驱动独立到drivers/dma/目录下，架构相关的dma操作放在arch/arm/mm/目录下，还有在drivers/base/目录下也有关于dma的驱动，以及drivers/dma-buf/目录下所形成的dma-buf架构，因此有必要梳理一下dma的框架</p>
+<a id="more"></a>
+<p>&emsp;&emsp;DMA（Direct Memory Access）用于在设备和内存之间直接进行数据传输而不经过CPU的一种方式，主要通过DMA控制器来实现，而DMA控制器也主要分为两种，一种是嵌入到SOC上的外部DMA控制器，另一种是设备自带的DMA控制器。</p>
+<p>&emsp;&emsp;首先是SOC上的DMA控制器，这个控制器主要是为了解决那些自身不带DMA控制器的设备也能进行DMA传输，其他的设备通过向这个总DMA控制器注册来实现DMA传输。</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/DMA_ut94kz.png" alt="DMA"></p>
+<p>&emsp;&emsp;而对于那些自身携带DMA控制器的设备来说，他们可以独自实现DMA传输。</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/DMA_device_oxv55a.png" alt="DMA_device" style="zoom: 25%;"></p>
+<p>&emsp;&emsp;其中，Descriptor描述DMA传输过程中的各种属性。DMA传输使用的是物理地址，而且所处理的buffer必须是物理上连续的。且CPU访问内存都是通过cache，但DMA不能访问cache，所以需要注意cache一致性，ARM架构通过clean、invalid操作来完成。在进行内存到设备传输时，要确保已经将cache中的内容写到内存上；在进行设备到内存传输时，从内存上读取数据之前需要确保将cache中对应的数据无效。</p>
+<h3 id="一、总体分析"><a href="#一、总体分析" class="headerlink" title="一、总体分析"></a>一、总体分析</h3><p>&emsp;&emsp;内核通常使用的地址是虚拟地址。我们调用kmalloc()、vmalloc()或者类似的接口返回的地址都是虚拟地址，保存在”void *”的变量中。虚拟内存系统（TLB、页表等）将虚拟地址（程序角度）翻译成物理地址（CPU角度），物理地址保存在“phys_addr_t”或“resource_size_t”的变量中。对于一个硬件设备上的寄存器等设备资源，内核是按照物理地址来管理的。驱动并不能直接使用这些物理地址，必须首先通过ioremap()接口将这些物理地址映射到内核虚拟地址空间上去。</p>
+<p>&emsp;&emsp;I/O设备使用第三种地址：“总线地址”。如果设备在MMIO地址空间（MMIO是物理地址空间的子集）中有若干的寄存器，或者该设备足够的智能，可以通过DMA执行读写系统内存的操作，这些情况下，设备使用的地址就是总线地址。在某些系统中，总线地址与CPU物理地址相同，但一般来说不同。iommus和host bridge可以在物理地址和总线地址之间进行映射。</p>
+<p>&emsp;&emsp;下图中对应了驱动程序访问总线地址的两种方案：</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875688/samples/DMA/image-20200827101651829_ynif9a.png" alt="image-20200827101651829"></p>
+<ol>
+<li><p>在设备初始化过程中，内核了解了所有的IO device及其对应的MMIO地址空间，CPU并不能通过总线地址A直接访问总线上的设备，host bridge会在MMIO（即物理地址）和总线地址之间进行mapping，因此，对于CPU，它实际上是可以通过B地址（位于MMIO地址空间）访问设备。驱动程序通过ioremap()把物理地址B映射成虚拟地址C，这时候，驱动程序就可以通过虚拟地址C来访问总线上的地址A了。</p>
+</li>
+<li><p>如果设备支持DMA，那么在驱动中可以通过kmalloc或者其他类似接口分配一个DMA buffer，并且返回了虚拟地址X，MMU将X地址映射成了物理地址Y，从而定位了DMA buffer在系统内存中的位置，驱动可以通过访问地址X来操作DMA buffer。但是设备不能通过X地址来访问DMA buffer，因为MMU对设备不可见，而且系统内存所在的系统总线和PCI总线属于不同的地址空间。在一些简单的系统中，设备可以通过DMA直接访问物理地址Y，但是在大多数的系统中，有一个IOMMU的硬件用来将DMA可访问的总线地址翻译成物理地址，也就是把上图中的地址Z翻译成Y。驱动在调用dma_map_single这样的接口函数的时候会传递一个虚拟地址X，在这个函数中会设定IOMMU的页表，将地址X映射到Z，并且将返回z这个总线地址。驱动可以把Z这个总线地址设定到设备上的DMA相关的寄存器中。这样，当设备发起对地址Z开始的DMA操作的时候，IOMMU可以进行地址映射，并将DMA操作定位到Y地址开始的DMA buffer。</p>
+</li>
+</ol>
+<h3 id="二、DMA访问限制"><a href="#二、DMA访问限制" class="headerlink" title="二、DMA访问限制"></a>二、DMA访问限制</h3><p>&emsp;&emsp;如果驱动是通过伙伴系统的接口（例如__get_free_page*()）或者类似kmalloc() or kmem_cache_alloc()这样的通用内存分配的接口来分配DMA buffer，那么这些接口函数返回的虚拟地址可以直接用于DMA mapping接口API，并通过DMA操作在外设和dma buffer中交换数据。但vmalloc()接口分配的DMA buffer不能直接使用，因为其物理内存不连续。</p>
+<p>&emsp;&emsp;驱动中定义的全局变量如果编译到内核则可以用于DMA操作，因为全局变量位于内核的数据段或者bss段。在内核初始化的时候，会建立kernel image mapping，因此全局变量所占据的内存都是连续的，并且VA和PA是有固定偏移的线性关系，因此可以用于DMA操作。在定义这些全局变量的DMA buffer的时候，要小心的进行cacheline的对齐，并且要处理CPU和DMA controller之间的操作同步，以避免cache coherence问题。</p>
+<p>&emsp;&emsp;如果驱动编译成模块全局变量则不能用于DMA操作，因为驱动中全局定义的DMA buffer不在内核的线性映射区域，其虚拟地址是在模块加载的时候，通过vmalloc分配，这时候DMA buffer如果大于一个page frame，那么实际上是无法保证其底层物理地址的连续性，也无法保证VA和PA的线性关系。</p>
+<p>&emsp;&emsp;通过kmap接口返回的内存也是不可以做DMA buffer，其原理类似vmalloc。块设备I/O子系统和网络子系统在分配buffer的时候则会确保其内存是可以进行DMA操作的。</p>
+<p>&emsp;&emsp;根据DMA buffer的特性，DMA操作有两种：一种是streaming，DMA buffer是一次性的，用完就销毁。这种DMA buffer需要自己考虑cache一致性。另外一种是DMA buffer是cache coherent的，软件实现上比较简单，更重要的是这种DMA buffer往往是静态的、长时间存在的。有些设备有DMA寻址限制，不同的硬件平台有不同的配置方式，有的平台没有限制，外设可以访问系统内存的每一个Byte，有些则不可以。</p>
+<p>&emsp;&emsp;不同类型的DMA操作可能有有不同的寻址限制，也可能相同。如果相同，我们可以用第一组接口设定streaming和coherent两种DMA 操作的地址掩码。如果不同，可以使用第二组的接口进行设定：</p>
+<blockquote>
+<p>int dma_set_mask_and_coherent(struct device *dev, u64 mask);</p>
+</blockquote>
+<blockquote>
+<p>int dma_set_mask(struct device *dev, u64 mask);</p>
+<p>int dma_set_coherent_mask(struct device *dev, u64 mask);</p>
+</blockquote>
+<h3 id="三、DMA映射"><a href="#三、DMA映射" class="headerlink" title="三、DMA映射"></a>三、DMA映射</h3><p>&emsp;&emsp;DMA映射分为两种，一种是一致性DMA映射（Consistent DMA mappings），另一种则是流式DMA映射（Streaming DMA mapping）。</p>
+<ol>
+<li><p>一致性DMA映射</p>
+<p>一致性DMA映射有两种特点：</p>
+<p>（1）持续使用该DMA buffer，初始化的时候map，系统结束时unmap。</p>
+<p>（2）CPU和DMA controller在发起对DMA buffer的并行访问的时候不需要考虑cache操作，CPU和DMA controller都可以看到对方对DMA buffer的更新。</p>
+</li>
+<li><p>流式DMA映射</p>
+<p>流式DMA映射是一次性的，一般是在DMA传输的时候才进行map，一旦DMA传输完成就立刻unmap。</p>
+</li>
+</ol>
+<p>   <img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875688/samples/DMA/image-20200829090605153_l6swsx.png" alt="image-20200829090605153"></p>
+<p>&emsp;&emsp;可以看到，cmem驱动中所采用的就是这种一致性DMA映射。通过dma_alloc_coherent()函数接口分配并映射了一个较大（page大小或类似）的coherent DMA memory。其中dev参数就是执行该设备的struct device对象的，size参数指明了需要分配DMA buffer的大小，以字节为单位，dma参数为返回的总线地址，最后一个参数为分配内存的标志，返回的参数为此块buffer的虚拟地址，供CPU使用。</p>
+<p>&emsp;&emsp;dma_alloc_coherent()函数所申请的内存是PAGE_SIZE对齐的，以PAGE_SIZE为单位申请buffer，而且此函数可以运行在进程上下文和中断上下文。</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200829092028125_z3sk9c.png" alt="image-20200829092028125"></p>
+<p>&emsp;&emsp;当所申请的buffer已经使用完，需要取消映射并释放此块内存，dma_free_coherent()函数直接取消内存的映射并释放内存，其中第三个参数为内存的虚拟地址，第四个参数为bus addr，与dma_alloc_coherent()函数不同的是，dma_free_coherent()函数只能运行在进程上下文而不能运行在中断上下文，在某些平台释放DMAbuffer的时候会引发TLB维护的操作，从而引起cpu core之间的通信，如果关闭了IRQ会锁死在SMP IPI的代码中。</p>
+<p>&emsp;&emsp;在所申请的大块内存中还会分成很多个pool，这里是通过堆相关的函数来进行管理的，通过HeapMem_alloc()函数从大块内存中申请一个pool，HeapMem_free()则释放一个pool，具体不继续分析。</p>
+<p>&emsp;&emsp;这里继续分析流式DMA映射的接口函数，流式DMA映射有两个版本的接口函数，一种是用来map/umap单个dma buffer，另一种用来map/umap形成scatterlist的多个dma buffer。</p>
+<ol>
+<li><p>单个dma buffer映射</p>
+<p>&emsp;&emsp;映射单个dma buffer的接口函数为dma_map_single()，传入的参数为struct device设备结构，虚拟地址，内存大小以及DMA操作的方向。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dma_handle = dma_map_single(dev, addr, size, direction);</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;umap单个dma buffer使用dma_unmap_single()接口函数</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dma_unmap_single(dev, dma_handle, size, direction);</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>多个形成scatterlist的dma buffer</p>
+<p>&emsp;&emsp;在scatterlist的情况下，需要映射的对象是分散的若干段dma buffer，通过dma_map_sg将scatterlist结构中的多个dma buffer映射成一个大块的、连续的bus address region。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">int</span> i, count = dma_map_sg(dev, sglist, nents, direction);</span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">scatterlist</span> *<span class="title">sg</span>;</span></span><br><span class="line"></span><br><span class="line">for_each_sg(sglist, sg, count, i) &#123; </span><br><span class="line">    hw_address[i] = sg_dma_address(sg); </span><br><span class="line">    hw_len[i] = sg_dma_len(sg); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;umap多个形成scatterlist的dma buffer是通过下面的接口实现的</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dma_unmap_sg(dev, sglist, nents, direction);</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;调用dma_unmap_sg的时候要确保DMA操作已经完成，另外，传递给dma_unmap_sg的nents参数需要等于传递给dma_map_sg的nents参数，而不是该函数返回的count。</p>
+<p>&emsp;&emsp;执行流式DMA映射的时候需要考虑CPU和设备之间数据的同步问题，以保证设备看到的数据和CPU看到的数据是一样的。所以，在进行映射DMA映射，完成传输之后，需要调用相关的函数来进行同步</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">dma_sync_single_for_cpu(dev, dma_handle, size, direction);</span><br><span class="line"><span class="comment">//或者</span></span><br><span class="line">dma_sync_sg_for_cpu(dev, sglist, nents, direction);</span><br></pre></td></tr></table></figure>
+</li>
+</ol>
+<p>&emsp;&emsp;由于DMA地址空间在某些CPU架构上是有限的，因此分配并map可能会产生错误，所以需要判断过程中是否产生了错误以及出错之后的处理</p>
+<ul>
+<li><p>检查dma_map_single和dma_map_page返回的dma address</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">dma_addr_t</span> dma_handle;</span><br><span class="line"></span><br><span class="line">dma_handle = dma_map_single(dev, addr, size, direction); </span><br><span class="line"><span class="keyword">if</span> (dma_mapping_error(dev, dma_handle)) &#123; </span><br><span class="line">	<span class="keyword">goto</span> map_error_handling; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>当在mapping多个page的时候，如果中间发生了mapping error，那么需要对那些已经mapped的page进行unmap的操作</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">dma_addr_t</span> dma_handle1; </span><br><span class="line"></span><br><span class="line">dma_handle1 = dma_map_single(dev, addr, size, direction); </span><br><span class="line"><span class="keyword">if</span> (dma_mapping_error(dev, dma_handle1)) &#123; </span><br><span class="line">    <span class="keyword">goto</span> map_error_handling1; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+</ul>
+<h3 id="四、DMA驱动分析以及初始化配置"><a href="#四、DMA驱动分析以及初始化配置" class="headerlink" title="四、DMA驱动分析以及初始化配置"></a>四、DMA驱动分析以及初始化配置</h3><p>&emsp;&emsp;上面只分析了DMA的执行流程，但是其初始化过程以及驱动的配置方案全都没有分析，接下来会继续分析剩下的部分。下图为DMA框架的大体流程：</p>
+<p>​        <img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875687/samples/DMA/dma%E6%A1%86%E6%9E%B6_ogfn0e.svg" alt="dma框架"></p>
+<p>&emsp;&emsp;硬件环境为ARMv7架构，SOC为TI的AM5728，SOC上内置一个DMA控制器。Linux内核中对DMA的支持通过DMA ENGINE架构，具体的实现分为Provider、Consumer以及DMA Buffer三个方面。三种抽象为：</p>
+<p>&emsp;&emsp;Provider：就是指SOC上的DMA Controller</p>
+<p>&emsp;&emsp;Consumer：那些能利用DMA搬移数据的片上外设，例如MMC、USB Controller等</p>
+<p>&emsp;&emsp;DMA Buffer：DMA传输过程中需要用到的数据缓冲</p>
+<h4 id="4-1-Provider"><a href="#4-1-Provider" class="headerlink" title="4.1 Provider"></a>4.1 Provider</h4><p>&emsp;&emsp;Provider所抽象的是SOC上的DMA控制器，它的驱动实现是与具体架构相关，以及传输过程中cache同步问题都在架构相关的文件中，涉及到的文件主要有<code>arch/arm/mm/dma-mapping.c</code>、<code>arch/arm/kernel/dma.c</code>、<code>arch/arm/mach-omap2/dma.c</code>、<code>arch/arm/plat-omap/dma.c</code>、<code>drivers/base/dma-mapping.c</code>、<code>drivers/base/dma-coherent.c</code>、<code>drivers/base/*</code>、<code>drivers/dma/*</code>等文件</p>
+<p><strong>arch/arm/mm/dma-mapping.c：</strong>主要实现由上层传来的分配buffer、从CMA区域分配buffer、带cache操作的分配buffer等操作的具体实现</p>
+<p><strong>arch/arm/kernel/dma.c：</strong>主要实现dma channel以及channel的各种操作，包括分配channel、释放channel等，其中还包括在procfs中创建接口</p>
+<p><strong>arch/arm/mach-omap2/dma.c：</strong>为设备树文件解析出来的plat-form节点分配内存并映射到内存中，初始化其中的部分数据</p>
+<p><strong>arch/arm/plat-omap/dma.c：</strong>解析出来的plat-form节点驱动和设备节点的初始化以及注册到内核，还包括中断的处理和注册</p>
+<p><strong>drivers/base/dma-mapping.c：</strong>对base目录下的coherent和contiguous两个关于dma文件的抽象，相当于一个核心层</p>
+<p><strong>drivers/base/dma-coherent.c：</strong>对于CMA及其他关于连续内存的操作</p>
+<p><strong>drivers/dma/omap-dma.c：</strong>dma engine驱动的具体实现，根据具体硬件SOC上的DMA控制器实现相应的驱动，包括omap dma驱动、dma-crossbar驱动、virt-dma驱动等</p>
+<p><strong>drivers/dma/dmaengine.c：</strong>抽象出的dmaengine架构，在上层将各种dma控制器的驱动抽象到一起，构成一层核心层</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875687/samples/DMA/dma_seq_dduobt.png" alt="dma_seq" style="zoom: 25%;"></p>
+<h4 id="4-2-Consumer"><a href="#4-2-Consumer" class="headerlink" title="4.2 Consumer"></a>4.2 Consumer</h4><p>&emsp;&emsp;Consumer则是利用DMA进行传输的其他外设，他们通过dmaengine提供的统一的接口去调用更底层的DMA驱动，如上图中的最上层就是提供给Consumer使用的。Consumer作为slave端，需要遵守一定的规则去进行DMA传输：</p>
+<ol>
+<li><p>分配一个DMA slave channel</p>
+</li>
+<li><p>设置slave和DMA控制器特殊的参数</p>
+</li>
+<li><p>获取一个描述DMA传输的descriptor</p>
+</li>
+<li><p>提交传输</p>
+</li>
+<li><p>发出DMA请求并等待反馈信息</p>
+</li>
+</ol>
+<h4 id="4-3-DMA-Buffer"><a href="#4-3-DMA-Buffer" class="headerlink" title="4.3 DMA Buffer"></a>4.3 DMA Buffer</h4><p>&emsp;&emsp;DMA传输根据方向可以分为device to memory、memory to device、device to device、memory to memory四种，其中memory to memory有自己专有的一套API，以async_开头，最后，因为mem2mem的DMA传输有了比较简洁的API，没必要直接使用dma engine提供的API，最后就导致dma engine所提供的API就特指为Slave-DMA API（即其他三种DMA传输）</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875686/samples/DMA/dma_tx_i7hscd.png" alt="dma_tx" style="zoom: 33%;"></p>
+<p>&emsp;&emsp;当传输的源或者目的地是memory的时候，为了提高效率，DMA controller不会每一次传输都访问memory，而是在内部开一个buffer，将数据缓存在自己buffer中：</p>
+<ul>
+<li><p>memory是源的时候，一次从memory读出一批数据保存在自己的buffer中，然后再一点点（以时钟为节拍）传输到目的地</p>
+</li>
+<li><p>memory是目的地的时候，先将源的数据传输到自己的buffer中，当累计到一定数量之后，再一次性写入memory</p>
+<p>DMA控制器内部可缓存的数据量的大小称作burst size</p>
+</li>
+</ul>
+<p>&emsp;&emsp; 一般的DMA控制器只能访问物理地址连续的内存，但在有些场景下，我们只有一些物理地址不连续的内存块，需要DMA把这些内存块的数据搬移到别处，这种场景称为scatter-gather。</p>
+<p>&emsp;&emsp;实现scatter-gather也有两种方式，一种是在DMA核心层提供scatter-gather的能力，用软件去模拟。这种方式需要先将内存块的数据搬移到一个连续的地址，然后让DMA从这个新地址开始搬移。另一种是DMA控制器本身支持scatter-gather，直接配置控制器即可，在软件上需要准备一个table或link-list，这里不继续深入分析。</p>
+<h3 id="五代码分析"><a href="#五代码分析" class="headerlink" title="五代码分析"></a>五代码分析</h3><p>&emsp;&emsp;linux内核版本4.4.19，分析的方向为自底向上，从最底层架构相关到DMA驱动最后到其他驱动调用DMA接口</p>
+<h4 id="5-1-架构相关"><a href="#5-1-架构相关" class="headerlink" title="5.1 架构相关"></a>5.1 架构相关</h4><p>&emsp;&emsp;在DMA相关的操作中，有关架构的操作和系统初始化是先于设备初始化的，系统初始化阶段会完成底层架构操作与base层的绑定，具体流程大致为</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875687/samples/DMA/dma_seq_arch_gse1vd.png" alt="dma_seq_arch" style="zoom: 25%;"></p>
+<p>&emsp;&emsp;其中，在初始化过程中就会完成DMA操作的定义，主要是完成DMA控制器与架构相关操作的实现，通过上层的调用能够执行最底层的DMA操作，当在驱动中去调用DMA的接口函数时，则直接调用与底层架构相关的函数接口，完成所需动作，具体函数调用流程为：</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875688/samples/DMA/func_seq_xkxvvq.png" alt="func_seq"></p>
+<p>&emsp;&emsp;这个过程主要是实现最底层的DMA操作，其中最主要的就是arm_dma_ops结构体的实现和注册</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921145912242_hhyelf.png" alt="image-20200921145912242"></p>
+<p>&emsp;&emsp;先分析arm_dma_alloc函数，它主要是获取DMA所需的buffer，这里需要先声明一些关于页表的类型和操作，所有的物理页面都是4k对齐的，因此所有表项的地址只需要高20位，而低12位则用于记录页面的状态信息和访问权限，即pgprot_t类型。</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921150114291_nijvbe.png" alt="image-20200921150114291"></p>
+<p>&emsp;&emsp;这里主要是执行第二个函数__dma_alloc，根据设备的不同，所分配的页面位置和页面类型也是不同的，如果只是普通的分配页面则执行simple_buffer的分配，如果是CMA内存区域则直接从所保留的内存区域分配页面，CMA的分析参考上一篇，如果是流式DMA buffer则和普通的页面分配是一样的，还有一种从pool中分配页面和remap页面，暂不分析其用途</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921155220167_vziqns.png" alt="image-20200921155220167"></p>
+<p>&emsp;&emsp;我们这里是流式DMA，所以所分配的buffer是通过__alloc_simple_buffer函数，传入的参数分别为设备节点、buffer大小、页面标志，__alloc_simple_buffer则继续向下调用__dma_alloc_buffer，其最终通过底层页分配器的接口–alloc_pages实现buffer的分配</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200921161715546_oett5j.png" alt="image-20200921161715546"></p>
+<p>&emsp;&emsp;页分配器的工作原理后续再分析，其他函数的实现也暂不继续分析</p>
+<h4 id="5-2-DMA驱动"><a href="#5-2-DMA驱动" class="headerlink" title="5.2 DMA驱动"></a>5.2 DMA驱动</h4><p>&emsp;&emsp;首先看DMA对应在设备树中的节点</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">			sdma_xbar: dma-router@b78 &#123;</span><br><span class="line">				compatible = <span class="string">"ti,dra7-dma-crossbar"</span>;</span><br><span class="line">				reg = &lt;<span class="number">0xb78</span> <span class="number">0xfc</span>&gt;;</span><br><span class="line">				<span class="meta">#dma-cells = <span class="meta-string">&lt;1&gt;;</span></span></span><br><span class="line">				dma-requests = &lt;<span class="number">205</span>&gt;;</span><br><span class="line">				ti,dma-safe-<span class="built_in">map</span> = &lt;<span class="number">0</span>&gt;;</span><br><span class="line">				dma-masters = &lt;&amp;sdma&gt;;</span><br><span class="line">			&#125;;</span><br><span class="line"></span><br><span class="line">			edma_xbar: dma-router@c78 &#123;</span><br><span class="line">				compatible = <span class="string">"ti,dra7-dma-crossbar"</span>;</span><br><span class="line">				reg = &lt;<span class="number">0xc78</span> <span class="number">0x7c</span>&gt;;</span><br><span class="line">				<span class="meta">#dma-cells = <span class="meta-string">&lt;2&gt;;</span></span></span><br><span class="line">				dma-requests = &lt;<span class="number">204</span>&gt;;</span><br><span class="line">				ti,dma-safe-<span class="built_in">map</span> = &lt;<span class="number">0</span>&gt;;</span><br><span class="line">				dma-masters = &lt;&amp;edma&gt;;</span><br><span class="line">			&#125;;</span><br><span class="line">...</span><br><span class="line">	sdma: dma-controller@<span class="number">4</span>a056000 &#123;</span><br><span class="line">		compatible = <span class="string">"ti,omap4430-sdma"</span>;</span><br><span class="line">		reg = &lt;<span class="number">0x4a056000</span> <span class="number">0x1000</span>&gt;;</span><br><span class="line">		interrupts = &lt;GIC_SPI <span class="number">7</span> IRQ_TYPE_LEVEL_HIGH&gt;,</span><br><span class="line">			     &lt;GIC_SPI <span class="number">8</span> IRQ_TYPE_LEVEL_HIGH&gt;,</span><br><span class="line">			     &lt;GIC_SPI <span class="number">9</span> IRQ_TYPE_LEVEL_HIGH&gt;,</span><br><span class="line">			     &lt;GIC_SPI <span class="number">10</span> IRQ_TYPE_LEVEL_HIGH&gt;;</span><br><span class="line">		<span class="meta">#dma-cells = <span class="meta-string">&lt;1&gt;;</span></span></span><br><span class="line">		dma-channels = &lt;<span class="number">32</span>&gt;;</span><br><span class="line">		dma-requests = &lt;<span class="number">127</span>&gt;;</span><br><span class="line">	&#125;;</span><br><span class="line"></span><br><span class="line">	edma: edma@<span class="number">43300000</span> &#123;</span><br><span class="line">		compatible = <span class="string">"ti,edma3-tpcc"</span>;</span><br><span class="line">		ti,hwmods = <span class="string">"tpcc"</span>;</span><br><span class="line">		reg = &lt;<span class="number">0x43300000</span> <span class="number">0x100000</span>&gt;;</span><br><span class="line">		reg-names = <span class="string">"edma3_cc"</span>;</span><br><span class="line">		interrupts = &lt;GIC_SPI <span class="number">361</span> IRQ_TYPE_LEVEL_HIGH&gt;,</span><br><span class="line">			     &lt;GIC_SPI <span class="number">360</span> IRQ_TYPE_LEVEL_HIGH&gt;,</span><br><span class="line">			     &lt;GIC_SPI <span class="number">359</span> IRQ_TYPE_LEVEL_HIGH&gt;;</span><br><span class="line">		interrupt-names = <span class="string">"edma3_ccint"</span>, <span class="string">"emda3_mperr"</span>,</span><br><span class="line">				  <span class="string">"edma3_ccerrint"</span>;</span><br><span class="line">		dma-requests = &lt;<span class="number">64</span>&gt;;</span><br><span class="line">		<span class="meta">#dma-cells = <span class="meta-string">&lt;2&gt;;</span></span></span><br><span class="line"></span><br><span class="line">		ti,tptcs = &lt;&amp;edma_tptc0 <span class="number">7</span>&gt;, &lt;&amp;edma_tptc1 <span class="number">0</span>&gt;;</span><br><span class="line">	&#125;;</span><br><span class="line">...</span><br><span class="line">       uart1: serial@<span class="number">4806</span>a000 &#123;</span><br><span class="line">		compatible = <span class="string">"ti,dra742-uart"</span>, <span class="string">"ti,omap4-uart"</span>;</span><br><span class="line">		reg = &lt;<span class="number">0x4806a000</span> <span class="number">0x100</span>&gt;;</span><br><span class="line">		interrupts-extended = &lt;&amp;crossbar_mpu GIC_SPI <span class="number">67</span> IRQ_TYPE_LEVEL_HIGH&gt;;</span><br><span class="line">		ti,hwmods = <span class="string">"uart1"</span>;</span><br><span class="line">		clock-frequency = &lt;<span class="number">48000000</span>&gt;;</span><br><span class="line">		status = <span class="string">"disabled"</span>;</span><br><span class="line">		dmas = &lt;&amp;edma_xbar <span class="number">49</span> <span class="number">0</span>&gt;, &lt;&amp;edma_xbar <span class="number">50</span> <span class="number">0</span>&gt;;</span><br><span class="line">		dma-names = <span class="string">"tx"</span>, <span class="string">"rx"</span>;</span><br><span class="line">	&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;在设备树中如果一个设备可以利用DMA传输，只需要在设备节点中加入dmas属性，并声明所使用的DMA控制器以及channel编号，例如uart1中所使用的edma 49和50号channel。</p>
+<p>&emsp;&emsp;使用DMA设备有很多，为了方便管理和使用，同时也是为了利用内核中现有的驱动框架，DMA驱动的实现也是标准的总线-设备-驱动模型，在设备驱动模型中还有隐藏在幕后的kobject、class和kset，每一个kobject对应sys文件系统里的一个目录，其parent指针将形成一个树状分层结构，class则是抽象设备的高层视图，描述的是设备的集合，不包含同类型的设备的底层实现细节，kset则是kobject的顶层容器类</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/device_model-1600679671585_rn5dts.png" alt="device_model"></p>
+<p>&emsp;&emsp;在drivers/dma/目录中与DMA驱动相关的文件主要有dmaengine.c、edma.c、of-dma.c、omap-dma.c、ti-dma-crossbar.c、virt-dma.c，dmaengine.c是整个DMA驱动的最上层入口，在这里实现了DMA驱动模型，即上面的一些结构，还抽象了一个dma_bus总线，初始化了一个pool。omap-dma.c和edma.c分别对应SOC上面的System DMA和Enhanced DMA的驱动程序，of-dma.c实现了基于DMA的一些设备树操作，ti-dma-crossbar.c则是dma-crossbar的驱动程序，virt-dma.c对应虚拟channel。</p>
+<p>&emsp;&emsp;首先是dmaengine.c，主要是去注册创建一个pool，这个pool是通过slab分配器实现的</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">int</span> __<span class="function">init <span class="title">dmaengine_init_unmap_pool</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> i;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; ARRAY_SIZE(unmap_pool); i++) &#123;</span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">dmaengine_unmap_pool</span> *<span class="title">p</span> = &amp;<span class="title">unmap_pool</span>[<span class="title">i</span>];</span></span><br><span class="line">		<span class="keyword">size_t</span> size;</span><br><span class="line"></span><br><span class="line">		size = <span class="keyword">sizeof</span>(struct dmaengine_unmap_data) +</span><br><span class="line">		       <span class="keyword">sizeof</span>(<span class="keyword">dma_addr_t</span>) * p-&gt;size;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* slab分配器接口，以后分析 */</span></span><br><span class="line">		p-&gt;cache = kmem_cache_create(p-&gt;name, size, <span class="number">0</span>,</span><br><span class="line">					     SLAB_HWCACHE_ALIGN, <span class="literal">NULL</span>);</span><br><span class="line">		<span class="keyword">if</span> (!p-&gt;cache)</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">        <span class="comment">/* slab分配器接口，以后分析 */</span></span><br><span class="line">		p-&gt;pool = mempool_create_slab_pool(<span class="number">1</span>, p-&gt;cache);</span><br><span class="line">		<span class="keyword">if</span> (!p-&gt;pool)</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (i == ARRAY_SIZE(unmap_pool))</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	dmaengine_destroy_unmap_pool();</span><br><span class="line">	<span class="keyword">return</span> -ENOMEM;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;然后是omap-dma.c，这里是dma驱动的具体实现，其中主要是probe函数，当在dma-bus总线上匹配到dma设备就会执行probe函数</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">omap_dma_probe</span><span class="params">(struct platform_device *pdev)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">omap_dmadev</span> *<span class="title">od</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">resource</span> *<span class="title">res</span>;</span></span><br><span class="line">	<span class="keyword">int</span> rc, i, irq;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 为omap_dmadev结构体申请内存 */</span></span><br><span class="line">	od = devm_kzalloc(&amp;pdev-&gt;dev, <span class="keyword">sizeof</span>(*od), GFP_KERNEL);</span><br><span class="line">	<span class="keyword">if</span> (!od)</span><br><span class="line">		<span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取内存资源 */</span></span><br><span class="line">	res = platform_get_resource(pdev, IORESOURCE_MEM, <span class="number">0</span>);</span><br><span class="line">	od-&gt;base = devm_ioremap_resource(&amp;pdev-&gt;dev, res);</span><br><span class="line">	<span class="keyword">if</span> (IS_ERR(od-&gt;base))</span><br><span class="line">		<span class="keyword">return</span> PTR_ERR(od-&gt;base);</span><br><span class="line"></span><br><span class="line">	od-&gt;plat = omap_get_plat_info();</span><br><span class="line">	<span class="keyword">if</span> (!od-&gt;plat)</span><br><span class="line">		<span class="keyword">return</span> -EPROBE_DEFER;</span><br><span class="line">	<span class="comment">/* 这里都是配置od对象 */</span></span><br><span class="line">	od-&gt;reg_map = od-&gt;plat-&gt;reg_map;</span><br><span class="line">	dma_cap_set(DMA_SLAVE, od-&gt;ddev.cap_mask);</span><br><span class="line">	dma_cap_set(DMA_CYCLIC, od-&gt;ddev.cap_mask);</span><br><span class="line">	dma_cap_set(DMA_MEMCPY, od-&gt;ddev.cap_mask);</span><br><span class="line">	od-&gt;ddev.device_alloc_chan_resources = omap_dma_alloc_chan_resources;</span><br><span class="line">	od-&gt;ddev.device_free_chan_resources = omap_dma_free_chan_resources;</span><br><span class="line">	od-&gt;ddev.device_tx_status = omap_dma_tx_status;</span><br><span class="line">	od-&gt;ddev.device_issue_pending = omap_dma_issue_pending;</span><br><span class="line">	od-&gt;ddev.device_prep_slave_sg = omap_dma_prep_slave_sg;</span><br><span class="line">	od-&gt;ddev.device_prep_dma_cyclic = omap_dma_prep_dma_cyclic;</span><br><span class="line">	od-&gt;ddev.device_prep_dma_memcpy = omap_dma_prep_dma_memcpy;</span><br><span class="line">	od-&gt;ddev.device_config = omap_dma_slave_config;</span><br><span class="line">	od-&gt;ddev.device_pause = omap_dma_pause;</span><br><span class="line">	od-&gt;ddev.device_resume = omap_dma_resume;</span><br><span class="line">	od-&gt;ddev.device_terminate_all = omap_dma_terminate_all;</span><br><span class="line">	od-&gt;ddev.device_synchronize = omap_dma_synchronize;</span><br><span class="line">	od-&gt;ddev.src_addr_widths = OMAP_DMA_BUSWIDTHS;</span><br><span class="line">	od-&gt;ddev.dst_addr_widths = OMAP_DMA_BUSWIDTHS;</span><br><span class="line">	od-&gt;ddev.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);</span><br><span class="line">	od-&gt;ddev.residue_granularity = DMA_RESIDUE_GRANULARITY_BURST;</span><br><span class="line">	od-&gt;ddev.dev = &amp;pdev-&gt;dev;</span><br><span class="line">	INIT_LIST_HEAD(&amp;od-&gt;ddev.channels);</span><br><span class="line">	spin_lock_init(&amp;od-&gt;lock);</span><br><span class="line">	spin_lock_init(&amp;od-&gt;irq_lock);</span><br><span class="line"></span><br><span class="line">	od-&gt;dma_requests = OMAP_SDMA_REQUESTS;</span><br><span class="line">	<span class="keyword">if</span> (pdev-&gt;dev.of_node &amp;&amp; of_property_read_u32(pdev-&gt;dev.of_node,</span><br><span class="line">						      <span class="string">"dma-requests"</span>,</span><br><span class="line">						      &amp;od-&gt;dma_requests)) &#123;</span><br><span class="line">		dev_info(&amp;pdev-&gt;dev,</span><br><span class="line">			 <span class="string">"Missing dma-requests property, using %u.\n"</span>,</span><br><span class="line">			 OMAP_SDMA_REQUESTS);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; OMAP_SDMA_CHANNELS; i++) &#123;</span><br><span class="line">		rc = omap_dma_chan_init(od);</span><br><span class="line">		<span class="keyword">if</span> (rc) &#123;</span><br><span class="line">			omap_dma_free(od);</span><br><span class="line">			<span class="keyword">return</span> rc;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 从设备树中获取中断 */</span></span><br><span class="line">	irq = platform_get_irq(pdev, <span class="number">1</span>);</span><br><span class="line">	<span class="keyword">if</span> (irq &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">		dev_info(&amp;pdev-&gt;dev, <span class="string">"failed to get L1 IRQ: %d\n"</span>, irq);</span><br><span class="line">		od-&gt;legacy = <span class="literal">true</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">/* Disable all interrupts */</span></span><br><span class="line">		od-&gt;irq_enable_mask = <span class="number">0</span>;</span><br><span class="line">		omap_dma_glbl_write(od, IRQENABLE_L1, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">		rc = devm_request_irq(&amp;pdev-&gt;dev, irq, omap_dma_irq,</span><br><span class="line">				      IRQF_SHARED, <span class="string">"omap-dma-engine"</span>, od);</span><br><span class="line">		<span class="keyword">if</span> (rc)</span><br><span class="line">			<span class="keyword">return</span> rc;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	od-&gt;ddev.filter.<span class="built_in">map</span> = od-&gt;plat-&gt;slave_map;</span><br><span class="line">	od-&gt;ddev.filter.mapcnt = od-&gt;plat-&gt;slavecnt;</span><br><span class="line">	od-&gt;ddev.filter.fn = omap_dma_filter_fn;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 注册OMAP-DMA设备 */</span></span><br><span class="line">	rc = dma_async_device_register(&amp;od-&gt;ddev);</span><br><span class="line"></span><br><span class="line">	platform_set_drvdata(pdev, od);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (pdev-&gt;dev.of_node) &#123;</span><br><span class="line">		omap_dma_info.dma_cap = od-&gt;ddev.cap_mask;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* Device-tree DMA controller registration */</span></span><br><span class="line">		rc = of_dma_controller_register(pdev-&gt;dev.of_node,</span><br><span class="line">				of_dma_simple_xlate, &amp;omap_dma_info);</span><br><span class="line">		<span class="keyword">if</span> (rc) &#123;</span><br><span class="line">			pr_warn(<span class="string">"OMAP-DMA: failed to register DMA controller\n"</span>);</span><br><span class="line">			dma_async_device_unregister(&amp;od-&gt;ddev);</span><br><span class="line">			omap_dma_free(od);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	dev_info(&amp;pdev-&gt;dev, <span class="string">"OMAP DMA engine driver\n"</span>);</span><br><span class="line">	<span class="keyword">return</span> rc;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;edma驱动中涉及到edma-tptc和edma的注册，主体还是edma的probe函数</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">edma_probe</span><span class="params">(struct platform_device *pdev)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">edma_soc_info</span>	*<span class="title">info</span> = <span class="title">pdev</span>-&gt;<span class="title">dev</span>.<span class="title">platform_data</span>;</span></span><br><span class="line">	s8			(*queue_priority_mapping)[<span class="number">2</span>];</span><br><span class="line">	<span class="keyword">int</span>			i, off, ln;</span><br><span class="line">	const s16		(*rsv_slots)[2];</span><br><span class="line">	const s16		(*xbar_chans)[2];</span><br><span class="line">	<span class="keyword">int</span>			irq;</span><br><span class="line">	<span class="keyword">char</span>			*irq_name;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">resource</span>		*<span class="title">mem</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">device_node</span>	*<span class="title">node</span> = <span class="title">pdev</span>-&gt;<span class="title">dev</span>.<span class="title">of_node</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">device</span>		*<span class="title">dev</span> = &amp;<span class="title">pdev</span>-&gt;<span class="title">dev</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">edma_cc</span>		*<span class="title">ecc</span>;</span></span><br><span class="line">	<span class="keyword">bool</span>			legacy_mode = <span class="literal">true</span>;</span><br><span class="line">	<span class="keyword">int</span> ret;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (node) &#123;</span><br><span class="line">		<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">of_device_id</span> *<span class="title">match</span>;</span></span><br><span class="line"></span><br><span class="line">		match = of_match_node(edma_of_ids, node);</span><br><span class="line">		<span class="keyword">if</span> (match &amp;&amp; (u32)match-&gt;data == EDMA_BINDING_TPCC)</span><br><span class="line">			legacy_mode = <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">		info = edma_setup_info_from_dt(dev, legacy_mode);</span><br><span class="line">		<span class="keyword">if</span> (IS_ERR(info)) &#123;</span><br><span class="line">			dev_err(dev, <span class="string">"failed to get DT data\n"</span>);</span><br><span class="line">			<span class="keyword">return</span> PTR_ERR(info);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	pm_runtime_enable(dev);</span><br><span class="line">	ret = pm_runtime_get_sync(dev);</span><br><span class="line"></span><br><span class="line">	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(<span class="number">32</span>));</span><br><span class="line"></span><br><span class="line">	ecc = devm_kzalloc(dev, <span class="keyword">sizeof</span>(*ecc), GFP_KERNEL);</span><br><span class="line"></span><br><span class="line">	ecc-&gt;dev = dev;</span><br><span class="line">	ecc-&gt;id = pdev-&gt;id;</span><br><span class="line">	ecc-&gt;legacy_mode = legacy_mode;</span><br><span class="line">	<span class="comment">/* When booting with DT the pdev-&gt;id is -1 */</span></span><br><span class="line">	<span class="keyword">if</span> (ecc-&gt;id &lt; <span class="number">0</span>)</span><br><span class="line">		ecc-&gt;id = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 同样获取设备的内存资源 */</span></span><br><span class="line">	mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, <span class="string">"edma3_cc"</span>);</span><br><span class="line"></span><br><span class="line">	ecc-&gt;base = devm_ioremap_resource(dev, mem);</span><br><span class="line">	<span class="keyword">if</span> (IS_ERR(ecc-&gt;base))</span><br><span class="line">		<span class="keyword">return</span> PTR_ERR(ecc-&gt;base);</span><br><span class="line"></span><br><span class="line">	platform_set_drvdata(pdev, ecc);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 从硬件IP中获取edma的配置参数 */</span></span><br><span class="line">	ret = edma_setup_from_hw(dev, info, ecc);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 基于硬件IP参数申请内存 */</span></span><br><span class="line">	ecc-&gt;slave_chans = devm_kcalloc(dev, ecc-&gt;num_channels,</span><br><span class="line">					<span class="keyword">sizeof</span>(*ecc-&gt;slave_chans), GFP_KERNEL);</span><br><span class="line"></span><br><span class="line">	ecc-&gt;slot_inuse = devm_kcalloc(dev, BITS_TO_LONGS(ecc-&gt;num_slots),</span><br><span class="line">				       <span class="keyword">sizeof</span>(<span class="keyword">unsigned</span> <span class="keyword">long</span>), GFP_KERNEL);</span><br><span class="line"></span><br><span class="line">	ecc-&gt;default_queue = info-&gt;default_queue;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; ecc-&gt;num_slots; i++)</span><br><span class="line">		edma_write_slot(ecc, i, &amp;dummy_paramset);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (info-&gt;rsv) &#123;</span><br><span class="line">		<span class="comment">/* Set the reserved slots in inuse list */</span></span><br><span class="line">		rsv_slots = info-&gt;rsv-&gt;rsv_slots;</span><br><span class="line">		<span class="keyword">if</span> (rsv_slots) &#123;</span><br><span class="line">			<span class="keyword">for</span> (i = <span class="number">0</span>; rsv_slots[i][<span class="number">0</span>] != <span class="number">-1</span>; i++) &#123;</span><br><span class="line">				off = rsv_slots[i][<span class="number">0</span>];</span><br><span class="line">				ln = rsv_slots[i][<span class="number">1</span>];</span><br><span class="line">				set_bits(off, ln, ecc-&gt;slot_inuse);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 清除xbar在unused链表中的通道映射 */</span></span><br><span class="line">	xbar_chans = info-&gt;xbar_chans;</span><br><span class="line">	<span class="keyword">if</span> (xbar_chans) &#123;</span><br><span class="line">		<span class="keyword">for</span> (i = <span class="number">0</span>; xbar_chans[i][<span class="number">1</span>] != <span class="number">-1</span>; i++) &#123;</span><br><span class="line">			off = xbar_chans[i][<span class="number">1</span>];</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 获取中断 */</span></span><br><span class="line">	irq = platform_get_irq_byname(pdev, <span class="string">"edma3_ccint"</span>);</span><br><span class="line">	<span class="keyword">if</span> (irq &lt; <span class="number">0</span> &amp;&amp; node)</span><br><span class="line">		irq = irq_of_parse_and_map(node, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">	irq = platform_get_irq_byname(pdev, <span class="string">"edma3_ccerrint"</span>);</span><br><span class="line">	<span class="keyword">if</span> (irq &lt; <span class="number">0</span> &amp;&amp; node)</span><br><span class="line">		irq = irq_of_parse_and_map(node, <span class="number">2</span>);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (irq &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">		irq_name = devm_kasprintf(dev, GFP_KERNEL, <span class="string">"%s_ccerrint"</span>,</span><br><span class="line">					  dev_name(dev));</span><br><span class="line">		ret = devm_request_irq(dev, irq, dma_ccerr_handler, <span class="number">0</span>, irq_name,</span><br><span class="line">				       ecc);</span><br><span class="line">		<span class="keyword">if</span> (ret) &#123;</span><br><span class="line">			dev_err(dev, <span class="string">"CCERRINT (%d) failed --&gt; %d\n"</span>, irq, ret);</span><br><span class="line">			<span class="keyword">return</span> ret;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	ecc-&gt;dummy_slot = edma_alloc_slot(ecc, EDMA_SLOT_ANY);</span><br><span class="line">	<span class="keyword">if</span> (ecc-&gt;dummy_slot &lt; <span class="number">0</span>) &#123;</span><br><span class="line">		dev_err(dev, <span class="string">"Can't allocate PaRAM dummy slot\n"</span>);</span><br><span class="line">		<span class="keyword">return</span> ecc-&gt;dummy_slot;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	queue_priority_mapping = info-&gt;queue_priority_mapping;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 事件队列优先映射 */</span></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; queue_priority_mapping[i][<span class="number">0</span>] != <span class="number">-1</span>; i++)</span><br><span class="line">		edma_assign_priority_to_queue(ecc, queue_priority_mapping[i][<span class="number">0</span>],</span><br><span class="line">					      queue_priority_mapping[i][<span class="number">1</span>]);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; ecc-&gt;num_region; i++) &#123;</span><br><span class="line">		edma_write_array2(ecc, EDMA_DRAE, i, <span class="number">0</span>, <span class="number">0x0</span>);</span><br><span class="line">		edma_write_array2(ecc, EDMA_DRAE, i, <span class="number">1</span>, <span class="number">0x0</span>);</span><br><span class="line">		edma_write_array(ecc, EDMA_QRAE, i, <span class="number">0x0</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	ecc-&gt;info = info;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 初始化dma设备和channels */</span></span><br><span class="line">	edma_dma_init(ecc, legacy_mode);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; ecc-&gt;num_channels; i++) &#123;</span><br><span class="line">		<span class="comment">/* 分配所有的channels到默认的队列 */</span></span><br><span class="line">		edma_assign_channel_eventq(&amp;ecc-&gt;slave_chans[i],</span><br><span class="line">					   info-&gt;default_queue);</span><br><span class="line">		<span class="comment">/* 设置虚拟slot的入口位置 */</span></span><br><span class="line">		edma_set_chmap(&amp;ecc-&gt;slave_chans[i], ecc-&gt;dummy_slot);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	ecc-&gt;dma_slave.filter.<span class="built_in">map</span> = info-&gt;slave_map;</span><br><span class="line">	ecc-&gt;dma_slave.filter.mapcnt = info-&gt;slavecnt;</span><br><span class="line">	ecc-&gt;dma_slave.filter.fn = edma_filter_fn;</span><br><span class="line"></span><br><span class="line">	ret = dma_async_device_register(&amp;ecc-&gt;dma_slave);</span><br><span class="line">	<span class="keyword">if</span> (ret) &#123;</span><br><span class="line">		dev_err(dev, <span class="string">"slave ddev registration failed (%d)\n"</span>, ret);</span><br><span class="line">		<span class="keyword">goto</span> err_reg1;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (ecc-&gt;dma_memcpy) &#123;</span><br><span class="line">		ret = dma_async_device_register(ecc-&gt;dma_memcpy);</span><br><span class="line">		<span class="keyword">if</span> (ret) &#123;</span><br><span class="line">			dev_err(dev, <span class="string">"memcpy ddev registration failed (%d)\n"</span>,</span><br><span class="line">				ret);</span><br><span class="line">			dma_async_device_unregister(&amp;ecc-&gt;dma_slave);</span><br><span class="line">			<span class="keyword">goto</span> err_reg1;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (node)</span><br><span class="line">		of_dma_controller_register(node, of_edma_xlate, ecc);</span><br><span class="line"></span><br><span class="line">	dev_info(dev, <span class="string">"TI EDMA DMA engine driver\n"</span>);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">err_reg1:</span><br><span class="line">	edma_free_slot(ecc, ecc-&gt;dummy_slot);</span><br><span class="line">	<span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;然后是ti-dma-crossbar.c，负责dma事件映射</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">ti_dra7_xbar_probe</span><span class="params">(struct platform_device *pdev)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">device_node</span> *<span class="title">node</span> = <span class="title">pdev</span>-&gt;<span class="title">dev</span>.<span class="title">of_node</span>;</span></span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">of_device_id</span> *<span class="title">match</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">device_node</span> *<span class="title">dma_node</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">ti_dra7_xbar_data</span> *<span class="title">xbar</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">property</span> *<span class="title">prop</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">resource</span> *<span class="title">res</span>;</span></span><br><span class="line">	u32 safe_val;</span><br><span class="line">	<span class="keyword">size_t</span> sz;</span><br><span class="line">	<span class="keyword">void</span> __iomem *iomem;</span><br><span class="line">	<span class="keyword">int</span> i, ret;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (!node)</span><br><span class="line">		<span class="keyword">return</span> -ENODEV;</span><br><span class="line"></span><br><span class="line">	xbar = devm_kzalloc(&amp;pdev-&gt;dev, <span class="keyword">sizeof</span>(*xbar), GFP_KERNEL);</span><br><span class="line">	<span class="keyword">if</span> (!xbar)</span><br><span class="line">		<span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">	dma_node = of_parse_phandle(node, <span class="string">"dma-masters"</span>, <span class="number">0</span>);</span><br><span class="line">	<span class="keyword">if</span> (!dma_node) &#123;</span><br><span class="line">		dev_err(&amp;pdev-&gt;dev, <span class="string">"Can't get DMA master node\n"</span>);</span><br><span class="line">		<span class="keyword">return</span> -ENODEV;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	match = of_match_node(ti_dra7_master_match, dma_node);</span><br><span class="line">	<span class="keyword">if</span> (!match) &#123;</span><br><span class="line">		dev_err(&amp;pdev-&gt;dev, <span class="string">"DMA master is not supported\n"</span>);</span><br><span class="line">		<span class="keyword">return</span> -EINVAL;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (of_property_read_u32(dma_node, <span class="string">"dma-requests"</span>,</span><br><span class="line">				 &amp;xbar-&gt;dma_requests)) &#123;</span><br><span class="line">		dev_info(&amp;pdev-&gt;dev,</span><br><span class="line">			 <span class="string">"Missing XBAR output information, using %u.\n"</span>,</span><br><span class="line">			 TI_DRA7_XBAR_OUTPUTS);</span><br><span class="line">		xbar-&gt;dma_requests = TI_DRA7_XBAR_OUTPUTS;</span><br><span class="line">	&#125;</span><br><span class="line">	of_node_put(dma_node);</span><br><span class="line"></span><br><span class="line">	xbar-&gt;dma_inuse = devm_kcalloc(&amp;pdev-&gt;dev,</span><br><span class="line">				       BITS_TO_LONGS(xbar-&gt;dma_requests),</span><br><span class="line">				       <span class="keyword">sizeof</span>(<span class="keyword">unsigned</span> <span class="keyword">long</span>), GFP_KERNEL);</span><br><span class="line">	<span class="keyword">if</span> (!xbar-&gt;dma_inuse)</span><br><span class="line">		<span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (of_property_read_u32(node, <span class="string">"dma-requests"</span>, &amp;xbar-&gt;xbar_requests)) &#123;</span><br><span class="line">		dev_info(&amp;pdev-&gt;dev,</span><br><span class="line">			 <span class="string">"Missing XBAR input information, using %u.\n"</span>,</span><br><span class="line">			 TI_DRA7_XBAR_INPUTS);</span><br><span class="line">		xbar-&gt;xbar_requests = TI_DRA7_XBAR_INPUTS;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (!of_property_read_u32(node, <span class="string">"ti,dma-safe-map"</span>, &amp;safe_val))</span><br><span class="line">		xbar-&gt;safe_val = (u16)safe_val;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">	prop = of_find_property(node, <span class="string">"ti,reserved-dma-request-ranges"</span>, &amp;sz);</span><br><span class="line">	<span class="keyword">if</span> (prop) &#123;</span><br><span class="line">		<span class="keyword">const</span> <span class="keyword">char</span> pname[] = <span class="string">"ti,reserved-dma-request-ranges"</span>;</span><br><span class="line">		u32 (*rsv_events)[<span class="number">2</span>];</span><br><span class="line">		<span class="keyword">size_t</span> nelm = sz / <span class="keyword">sizeof</span>(*rsv_events);</span><br><span class="line">		<span class="keyword">int</span> i;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (!nelm)</span><br><span class="line">			<span class="keyword">return</span> -EINVAL;</span><br><span class="line"></span><br><span class="line">		rsv_events = kcalloc(nelm, <span class="keyword">sizeof</span>(*rsv_events), GFP_KERNEL);</span><br><span class="line">		<span class="keyword">if</span> (!rsv_events)</span><br><span class="line">			<span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">		ret = of_property_read_u32_array(node, pname, (u32 *)rsv_events,</span><br><span class="line">						 nelm * <span class="number">2</span>);</span><br><span class="line">		<span class="keyword">if</span> (ret)</span><br><span class="line">			<span class="keyword">return</span> ret;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; nelm; i++) &#123;</span><br><span class="line">			ti_dra7_xbar_reserve(rsv_events[i][<span class="number">0</span>], rsv_events[i][<span class="number">1</span>],</span><br><span class="line">					     xbar-&gt;dma_inuse);</span><br><span class="line">		&#125;</span><br><span class="line">		kfree(rsv_events);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	res = platform_get_resource(pdev, IORESOURCE_MEM, <span class="number">0</span>);</span><br><span class="line">	iomem = devm_ioremap_resource(&amp;pdev-&gt;dev, res);</span><br><span class="line">	<span class="keyword">if</span> (IS_ERR(iomem))</span><br><span class="line">		<span class="keyword">return</span> PTR_ERR(iomem);</span><br><span class="line"></span><br><span class="line">	xbar-&gt;iomem = iomem;</span><br><span class="line"></span><br><span class="line">	xbar-&gt;dmarouter.dev = &amp;pdev-&gt;dev;</span><br><span class="line">	xbar-&gt;dmarouter.route_free = ti_dra7_xbar_free;</span><br><span class="line">	xbar-&gt;dma_offset = (u32)match-&gt;data;</span><br><span class="line"></span><br><span class="line">	mutex_init(&amp;xbar-&gt;mutex);</span><br><span class="line">	platform_set_drvdata(pdev, xbar);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Reset the crossbar */</span></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; xbar-&gt;dma_requests; i++) &#123;</span><br><span class="line">		<span class="keyword">if</span> (!test_bit(i, xbar-&gt;dma_inuse))</span><br><span class="line">			ti_dra7_xbar_write(xbar-&gt;iomem, i, xbar-&gt;safe_val);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	ret = of_dma_router_register(node, ti_dra7_xbar_route_allocate,</span><br><span class="line">				     &amp;xbar-&gt;dmarouter);</span><br><span class="line">	<span class="keyword">if</span> (ret) &#123;</span><br><span class="line">		<span class="comment">/* Restore the defaults for the crossbar */</span></span><br><span class="line">		<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; xbar-&gt;dma_requests; i++) &#123;</span><br><span class="line">			<span class="keyword">if</span> (!test_bit(i, xbar-&gt;dma_inuse))</span><br><span class="line">				ti_dra7_xbar_write(xbar-&gt;iomem, i, i);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;最后是虚拟channel，在virt-dma.c文件中实现</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">vchan_init</span><span class="params">(struct virt_dma_chan *vc, struct dma_device *dmadev)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	dma_cookie_init(&amp;vc-&gt;chan);</span><br><span class="line"></span><br><span class="line">	spin_lock_init(&amp;vc-&gt;lock);</span><br><span class="line">	INIT_LIST_HEAD(&amp;vc-&gt;desc_allocated);</span><br><span class="line">	INIT_LIST_HEAD(&amp;vc-&gt;desc_submitted);</span><br><span class="line">	INIT_LIST_HEAD(&amp;vc-&gt;desc_issued);</span><br><span class="line">	INIT_LIST_HEAD(&amp;vc-&gt;desc_completed);</span><br><span class="line"></span><br><span class="line">	tasklet_init(&amp;vc-&gt;task, vchan_complete, (<span class="keyword">unsigned</span> <span class="keyword">long</span>)vc);</span><br><span class="line"></span><br><span class="line">	vc-&gt;chan.device = dmadev;</span><br><span class="line">	list_add_tail(&amp;vc-&gt;chan.device_node, &amp;dmadev-&gt;channels);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="5-3-具体实例"><a href="#5-3-具体实例" class="headerlink" title="5.3 具体实例"></a>5.3 具体实例</h4><p>&emsp;&emsp;这里给出一个实际驱动中调用dma传输的一个例子，在cmem驱动中通过一致性dma接口分配了buffer，调用v7_dma_map_area函数实现cache的同步和dma传输</p>
+<p><img src="https://res.cloudinary.com/flyingcatz/image/upload/v1614875689/samples/DMA/image-20200923091128578_w4xg1t.png" alt="image-20200923091128578"></p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"><i class="fa fa-tag"></i> Linux</a>
+          
+            <a href="/tags/驱动/" rel="tag"><i class="fa fa-tag"></i> 驱动</a>
+          
+            <a href="/tags/dma/" rel="tag"><i class="fa fa-tag"></i> dma</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/02/13/cma/" rel="next" title="CMA">
+                <i class="fa fa-chevron-left"></i> CMA
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2021/03/05/display/" rel="prev" title="display subsystem">
+                display subsystem <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpg" alt="ZhangJian">
+            
+              <p class="site-author-name" itemprop="name">ZhangJian</p>
+              <p class="site-description motion-element" itemprop="description">厚积薄发</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">12</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">categories</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">20</span>
+                    <span class="site-state-item-name">tags</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/FlyingCatZ" title="GitHub &rarr; https://github.com/FlyingCatZ" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianzhang0248@gmail.com" title="E-Mail &rarr; mailto:jianzhang0248@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://t.me/Dicy_z" title="Telegram &rarr; https://t.me/Dicy_z" rel="noopener" target="_blank"><i class="fa fa-fw fa-telegram"></i>Telegram</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+            <div class="links-of-blogroll motion-element links-of-blogroll-block">
+              <div class="links-of-blogroll-title">
+                <i class="fa  fa-fw fa-link"></i>
+                Links
+              </div>
+              <ul class="links-of-blogroll-list">
+                
+                  <li class="links-of-blogroll-item">
+                    <a href="https://www.kernel.org" title="https://www.kernel.org" rel="noopener" target="_blank">Linux内核</a>
+                  </li>
+                
+              </ul>
+            </div>
+          
+		  
+		  <link rel="stylesheet" href="/dist/APlayer.min.css">
+<div id="aplayer"></div>
+<script type="text/javascript" src="/dist/APlayer.min.js"></script>
+<script type="text/javascript" src="/dist/music.js"></script>
+		 
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一、总体分析"><span class="nav-number">2.</span> <span class="nav-text">一、总体分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二、DMA访问限制"><span class="nav-number">3.</span> <span class="nav-text">二、DMA访问限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三、DMA映射"><span class="nav-number">4.</span> <span class="nav-text">三、DMA映射</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#四、DMA驱动分析以及初始化配置"><span class="nav-number">5.</span> <span class="nav-text">四、DMA驱动分析以及初始化配置</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#4-1-Provider"><span class="nav-number">5.1.</span> <span class="nav-text">4.1 Provider</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-2-Consumer"><span class="nav-number">5.2.</span> <span class="nav-text">4.2 Consumer</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-3-DMA-Buffer"><span class="nav-number">5.3.</span> <span class="nav-text">4.3 DMA Buffer</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#五代码分析"><span class="nav-number">6.</span> <span class="nav-text">五代码分析</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#5-1-架构相关"><span class="nav-number">6.1.</span> <span class="nav-text">5.1 架构相关</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-2-DMA驱动"><span class="nav-number">6.2.</span> <span class="nav-text">5.2 DMA驱动</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-3-具体实例"><span class="nav-number">6.3.</span> <span class="nav-text">5.3 具体实例</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+    <div id="sidebar-dimmer"></div>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-heart" aria-hidden="true"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ZhangJian</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.8.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.0.1</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+      <div>
+        <div class="addthis_inline_share_toolbox">
+  <script src="//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-5cb5dc6394c9f52d" async="async"></script>
+</div>
+
+      </div>
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+    
+  
+  <script color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.1"></script>
+
+  <script src="/js/src/motion.js?v=7.0.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/schemes/muse.js?v=7.0.1"></script>
+
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.1"></script>
+<script src="/js/src/post-details.js?v=7.0.1"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.1"></script>
+
+
+  
+  
+  
+
+<script src="//cdn1.lncld.net/static/js/3.11.1/av-min.js"></script>
+
+
+
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+
+<script>
+  var GUEST = ['nick', 'mail', 'link'];
+  var guest = 'nick,mail,link';
+  guest = guest.split(',').filter(function(item) {
+    return GUEST.indexOf(item) > -1;
+  });
+  new Valine({
+    el: '#comments',
+    verify: false,
+    notify: false,
+    appId: 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz',
+    appKey: '2DDTKlnAQXmU066YfpnB843H',
+    placeholder: 'Just go go',
+    avatar: 'mm',
+    meta: guest,
+    pageSize: '10' || 10,
+    visitor: false
+  });
+</script>
+
+
+
+
+  
+
+
+  
+  <script>
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url).replace(/\/{2,}/g, '/');
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x"></i></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x"></i></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+  
+  <script>
+    
+    function addCount(Counter) {
+      var $visitors = $('.leancloud_visitors');
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+
+      Counter('get', '/classes/Counter', { where: JSON.stringify({ url }) })
+        .done(function({ results }) {
+          if (results.length > 0) {
+            var counter = results[0];
+            
+            Counter('put', '/classes/Counter/' + counter.objectId, JSON.stringify({ time: { '__op': 'Increment', 'amount': 1 } }))
+            
+              .done(function() {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.time + 1);
+              })
+            
+              .fail(function ({ responseJSON }) {
+                console.log('Failed to save Visitor num, with error message: ' + responseJSON.error);
+              })
+          } else {
+            
+              var $element = $(document.getElementById(url));
+              $element.find('.leancloud-visitors-count').text('Counter not initialized! More info at console err msg.');
+              console.error('ATTENTION! LeanCloud counter has security bug, see how to solve it here: https://github.com/theme-next/hexo-leancloud-counter-security. \n However, you can still use LeanCloud without security, by setting `security` option to `false`.');
+            
+          }
+        })
+        .fail(function ({ responseJSON }) {
+          console.log('LeanCloud Counter Error: ' + responseJSON.code + ' ' + responseJSON.error);
+        });
+    }
+    
+
+    $(function() {
+      $.get('https://app-router.leancloud.cn/2/route?appId=' + 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz')
+        .done(function({ api_server }) {
+          var Counter = function(method, url, data) {
+            return $.ajax({
+              method: method,
+              url: 'https://' + api_server + '/1.1' + url,
+              headers: {
+                'X-LC-Id': 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz',
+                'X-LC-Key': '2DDTKlnAQXmU066YfpnB843H',
+                'Content-Type': 'application/json',
+              },
+              data: data
+            });
+          };
+          
+            addCount(Counter);
+          
+        });
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+  	 
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.1.js"></script>
+  <script>AV.initialize("HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz", "2DDTKlnAQXmU066YfpnB843H");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+  
+  
+  <!-- �������� -->
+  <script type="text/javascript" src="/js/src/particle.js"></script>
+
+  
+</body>
+</html>
