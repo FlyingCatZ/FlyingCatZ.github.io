@@ -294,7 +294,7 @@ read_more_btn: true
 post_meta:
   item_text: true
   created_at: true
-  updated_at:
+  updated_at: 
     enabled: true
     # If true, show updated date label only if `updated date` different from `created date` (post edited in another day than was created).
     # And if post will edited in same day as created, edited time will show in popup title under created time label.
@@ -555,8 +555,8 @@ changyan:
 # More info available at https://valine.js.org
 valine:
   enable: true # When enable is set to be true, leancloud_visitors is recommended to be closed for the re-initialization problem within different leancloud adk version.
-  appid: HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz # your leancloud application appid
-  appkey: 2DDTKlnAQXmU066YfpnB843H # your leancloud application appkey
+  appid: wiTxydzgpKFN3VspVy52D7kQ-gzGzoHsz # your leancloud application appid
+  appkey: STRHgv6GsNi2fkGWE2jKgR7y # your leancloud application appkey
   notify: false # mail notifier, See: https://github.com/xCss/Valine/wiki
   verify: false # Verification code
   placeholder: Just go go # comment box placeholder
@@ -619,20 +619,20 @@ add_this_id: ra-5cb5dc6394c9f52d
 # Weibo,Wechat,Douban,QQZone,Twitter,Linkedin,Mailto,Reddit,Delicious,StumbleUpon,Pinterest,Facebook,GooglePlus,
 # Slashdot,Technorati,Posterous,Tumblr,GoogleBookmarks,Newsvine,Evernote,Friendfeed,Vkontakte,Odnoklassniki,Mailru
 needmoreshare2:
-  enable: false
+  enable: true
   postbottom:
-    enable: false
+    enable: true
     options:
-      iconStyle: box
+      iconStyle: default
       boxForm: horizontal
       position: bottomCenter
       networks: Weibo,Wechat,Douban,QQZone,Twitter,Facebook
   float:
-    enable: false
+    enable: true
     options:
-      iconStyle: box
-      boxForm: horizontal
-      position: middleRight
+      iconStyle: default
+      boxForm: vertical
+      position: topRight
       networks: Weibo,Wechat,Douban,QQZone,Twitter,Facebook
 
 # Google Webmaster tools verification setting
@@ -704,8 +704,8 @@ rating:
 # You can visit https://leancloud.cn to get AppID and AppKey.
 leancloud_visitors:
   enable: true
-  app_id: HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz
-  app_key: 2DDTKlnAQXmU066YfpnB843H
+  app_id: wiTxydzgpKFN3VspVy52D7kQ-gzGzoHsz
+  app_key: STRHgv6GsNi2fkGWE2jKgR7y
   # Dependencies: https://github.com/theme-next/hexo-leancloud-counter-security
   # If you don't care about security in leancloud counter and just want to use it directly
   # (without hexo-leancloud-counter-security plugin), set `security` to `false`.
