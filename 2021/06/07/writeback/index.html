@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="en">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2">
+
+<link rel="stylesheet" href="/css/main.css?v=7.0.1">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=7.0.1">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=7.0.1">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=7.0.1" color="#222">
+
+
+
+
+
+
+
+<script id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '7.0.1',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":true,"dimmer":true},
+    fancybox: false,
+    fastclick: false,
+    lazyload: false,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+  
+
+
+
+
+  <meta name="description" content="前言&amp;emsp;&amp;emsp;writeback是将内存中的脏页缓存写回到永久存储设备的过程，主要原因是磁盘等存储设备的读写速率远远小于内存的读写速率，所以需要在内存上面建立缓存，发生数据修改时先修改内存上的缓存，这些被修改的缓存称为脏页，脏页最终需要写入到具体的硬件设备，这个过程称为回写。">
+<meta name="keywords" content="Linux,文件系统,writeback">
+<meta property="og:type" content="article">
+<meta property="og:title" content="writeback">
+<meta property="og:url" content="http://yoursite.com/2021/06/07/writeback/index.html">
+<meta property="og:site_name" content="ZhangJian&#39;s Blog">
+<meta property="og:description" content="前言&amp;emsp;&amp;emsp;writeback是将内存中的脏页缓存写回到永久存储设备的过程，主要原因是磁盘等存储设备的读写速率远远小于内存的读写速率，所以需要在内存上面建立缓存，发生数据修改时先修改内存上的缓存，这些被修改的缓存称为脏页，脏页最终需要写入到具体的硬件设备，这个过程称为回写。">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="http://yoursite.com/home/jian/Documents/work/调研报告/picture_struct-1616550376390.png">
+<meta property="og:image" content="http://yoursite.com/home/jian/Documents/work/调研报告/structs.png">
+<meta property="og:image" content="http://yoursite.com/home/jian/Documents/work/调研报告/Screenshot%20from%202021-03-30%2009-22-23.png">
+<meta property="og:updated_time" content="2021-06-07T10:08:59.010Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="writeback">
+<meta name="twitter:description" content="前言&amp;emsp;&amp;emsp;writeback是将内存中的脏页缓存写回到永久存储设备的过程，主要原因是磁盘等存储设备的读写速率远远小于内存的读写速率，所以需要在内存上面建立缓存，发生数据修改时先修改内存上的缓存，这些被修改的缓存称为脏页，脏页最终需要写入到具体的硬件设备，这个过程称为回写。">
+<meta name="twitter:image" content="http://yoursite.com/home/jian/Documents/work/调研报告/picture_struct-1616550376390.png">
+
+
+
+  <link rel="alternate" href="/atom.xml" title="ZhangJian's Blog" type="application/atom+xml">
+
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2021/06/07/writeback/">
+
+
+
+<script id="page.configurations">
+  CONFIG.page = {
+    sidebar: "",
+  };
+</script>
+
+  <title>writeback | ZhangJian's Blog</title>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .motion-element,
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-title { opacity: initial; }
+
+  .use-motion .logo,
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="en">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">ZhangJian's Blog</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+    
+    
+  </div>
+
+  <div class="site-nav-toggle">
+    <button aria-label="Toggle navigation bar">
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  
+    <ul id="menu" class="menu">
+      
+        
+        
+        
+          
+          <li class="menu-item menu-item-home">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/" rel="section"><i class="menu-item-icon fa fa-fw fa-home"></i> <br>Home</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-tags">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/tags/" rel="section"><i class="menu-item-icon fa fa-fw fa-tags"></i> <br>Tags</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-categories">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/categories/" rel="section"><i class="menu-item-icon fa fa-fw fa-th"></i> <br>Categories</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-archives">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/archives/" rel="section"><i class="menu-item-icon fa fa-fw fa-archive"></i> <br>Archives</a>
+
+  </li>
+        
+        
+        
+          
+          <li class="menu-item menu-item-about">
+
+    
+    
+    
+      
+    
+
+    
+
+    <a href="/about/" rel="section"><i class="menu-item-icon fa fa-fw fa-user"></i> <br>About</a>
+
+  </li>
+
+      
+      
+        <li class="menu-item menu-item-search">
+          
+            <a href="javascript:;" class="popup-trigger">
+          
+            
+              <i class="menu-item-icon fa fa-search fa-fw"></i> <br>Search</a>
+        </li>
+      
+    </ul>
+  
+
+  
+    
+
+  
+
+  
+    <div class="site-search">
+      
+  <div class="popup search-popup local-search-popup">
+  <div class="local-search-header clearfix">
+    <span class="search-icon">
+      <i class="fa fa-search"></i>
+    </span>
+    <span class="popup-btn-close">
+      <i class="fa fa-times-circle"></i>
+    </span>
+    <div class="local-search-input-wrapper">
+      <input autocomplete="off" placeholder="Searching..." spellcheck="false" type="text" id="local-search-input">
+    </div>
+  </div>
+  <div id="local-search-result"></div>
+</div>
+
+
+
+    </div>
+  
+</nav>
+
+
+
+  
+
+
+
+</div>
+    </header>
+
+    
+  
+  
+  
+  
+
+  
+
+  <a href="https://github.com/FlyingCatZ" class="github-corner" title="Follow me on GitHub" aria-label="Follow me on GitHub" rel="noopener" target="_blank"><svg width="80" height="80" viewbox="0 0 250 250" style="fill: #222; color: #fff; position: absolute; top: 0; border: 0; right: 0;" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"/><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"/><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"/></svg></a>
+
+
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2021/06/07/writeback/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="ZhangJian">
+      <meta itemprop="description" content="厚积薄发">
+      <meta itemprop="image" content="/images/avatar.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="ZhangJian's Blog">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">writeback
+
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+
+            
+            
+            
+
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Posted on</span>
+              
+
+              
+                
+              
+
+              <time title="Created: 2021-06-07 18:04:44 / Modified: 18:08:59" itemprop="dateCreated datePublished" datetime="2021-06-07T18:04:44+08:00">2021-06-07</time>
+            
+
+            
+              
+
+              
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+			
+			
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">In</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing"><a href="/categories/Linux/" itemprop="url" rel="index"><span itemprop="name">Linux</span></a></span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+            
+              
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+            
+                <span class="post-meta-item-text">Comments: </span>
+                <a href="/2021/06/07/writeback/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2021/06/07/writeback/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+            <span id="/2021/06/07/writeback/" class="leancloud_visitors" data-flag-title="writeback">
+              <span class="post-meta-divider">|</span>
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              
+                <span class="post-meta-item-text">Views: </span>
+              
+                <span class="leancloud-visitors-count"></span>
+            </span>
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <script src="/assets/js/APlayer.min.js"> </script><h3 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h3><p>&emsp;&emsp;writeback是将内存中的脏页缓存写回到永久存储设备的过程，主要原因是磁盘等存储设备的读写速率远远小于内存的读写速率，所以需要在内存上面建立缓存，发生数据修改时先修改内存上的缓存，这些被修改的缓存称为脏页，脏页最终需要写入到具体的硬件设备，这个过程称为回写。</p>
+<a id="more"></a>
+<h3 id="一、writeback参数分析"><a href="#一、writeback参数分析" class="headerlink" title="一、writeback参数分析"></a>一、writeback参数分析</h3><h4 id="1-1-writeback-reason"><a href="#1-1-writeback-reason" class="headerlink" title="1.1 writeback reason"></a>1.1 writeback reason</h4><p>&emsp;&emsp;writeback发生有很多原因，当前内核版本5.12-rc4，触发writeback的原因如下</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">enum</span> wb_reason &#123;</span><br><span class="line">    WB_REASON_BACKGROUND, 		<span class="comment">//后台回写	</span></span><br><span class="line">    WB_REASON_VMSCAN, 			<span class="comment">//内存压力							</span></span><br><span class="line">    WB_REASON_SYNC, 			<span class="comment">//系统调用回写</span></span><br><span class="line">    WB_REASON_PERIODIC, 		<span class="comment">//定期回写</span></span><br><span class="line">    WB_REASON_LAPTOP_TIMER, 	<span class="comment">//Laptop模式回写</span></span><br><span class="line">    WB_REASON_FS_FREE_SPACE, 	<span class="comment">//当1/2的可用块变脏时开始推送delalloc，ext4使用</span></span><br><span class="line"></span><br><span class="line">    WB_REASON_FORKER_THREAD, 	<span class="comment">//紧急情况下回写</span></span><br><span class="line">    WB_REASON_FOREIGN_FLUSH, 	<span class="comment">//cgroup相关回写</span></span><br><span class="line"></span><br><span class="line">    WB_REASON_MAX,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;大致可以总结writeback的原因如下</p>
+<ul>
+<li>内存压力，当文件缓存占用太多的内存会触发writeback释放内存上的缓存（shrink_inactive_list，异步方式）</li>
+<li>系统调用，当用户层主动调用sync相关的系统调用时会触发writeback（ksys_sync，异步方式，sync_inodes_sb，同步方式）</li>
+<li>定时回写，每隔5s触发一次writeback（dirty_writeback_centisecs_handler，异步方式，用于处理/proc/sys/vm/dirty_writeback_centisecs文件，wb_check_old_data_flush，同步方式）</li>
+<li>脏块过多，当系统中的free block小于%150 dirty block时触发writeback（ext4_nonda_switch，同步方式，ext4专用）</li>
+</ul>
+<p>&emsp;&emsp;其他的writeback条件为特定条件下使用，例如laptop模式的回写。</p>
+<h4 id="1-2-数据结构"><a href="#1-2-数据结构" class="headerlink" title="1.2 数据结构"></a>1.2 数据结构</h4><p>&emsp;&emsp;在writeback中有几个重要的数据结构，分别是bdi_writeback、backing_dev_info、wb_writeback_work，这三者关系如下图</p>
+<p><img src="/home/jian/Documents/work/调研报告/picture_struct-1616550376390.png" alt="picture_struct" style="zoom:18%;"></p>
+<p>&emsp;&emsp;最顶层是一个work_queue，其他的则为</p>
+<p>bdi_writeback：刷新脏页所需的所有信息</p>
+<p>backing_dev_info：backing_dev的所有信息</p>
+<p>wb_writeback_work：writeback的工作任务</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">wb_writeback_work</span> &#123;</span>                                                       </span><br><span class="line">	<span class="keyword">long</span> nr_pages; 						<span class="comment">//待回写页面数量</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">super_block</span> *<span class="title">sb</span>;</span> 			<span class="comment">//该writeback任务所属的super_block</span></span><br><span class="line">	<span class="keyword">enum</span> writeback_sync_modes sync_mode; <span class="comment">//同步回写模式</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> tagged_writepages:<span class="number">1</span>; 	<span class="comment">//</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> for_kupdate:<span class="number">1</span>;     	<span class="comment">//若值为1，则表示回写操作是周期性的机制；否则值为0</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> range_cyclic:<span class="number">1</span>;    	<span class="comment">//若值为0，则表示回写操作范围限制在[range_start, range_end]限定范围；若值为1，则表示内核可以对 mapping 里的页面执行多次回写操作。</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> for_background:<span class="number">1</span>; 		<span class="comment">//若值为1，表示后台回写；否则值为0</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> for_sync:<span class="number">1</span>;    		<span class="comment">/* sync(2) WB_SYNC_ALL writeback */</span>              </span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> auto_free:<span class="number">1</span>;   		<span class="comment">/* free on completion */</span>                         </span><br><span class="line">	<span class="keyword">enum</span> wb_reason reason;      		<span class="comment">/* writeback触发原因 */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">list</span>;</span>      		<span class="comment">/* 待处理的工作链表 */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">wb_completion</span> *<span class="title">done</span>;</span> 		<span class="comment">/* 完成标志 */</span>                    </span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="comment">/* 指定同步模式 */</span></span><br><span class="line"><span class="keyword">enum</span> writeback_sync_modes &#123;                                                       	</span><br><span class="line">    WB_SYNC_NONE,   <span class="comment">/* 表示当遇到锁住的inode时，它必须等待该inode解锁，而不能跳过。 */</span></span><br><span class="line">    WB_SYNC_ALL,    <span class="comment">/* 表示跳过被锁住的inode */</span>                                  </span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;inode节点中的i_mapping成员保存了要写入的所有的页</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">inode</span> &#123;</span></span><br><span class="line">	...</span><br><span class="line">	<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">inode_operations</span>	*<span class="title">i_op</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">super_block</span>	*<span class="title">i_sb</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">address_space</span>	*<span class="title">i_mapping</span>;</span></span><br><span class="line">	...</span><br><span class="line">	<span class="keyword">union</span> &#123;</span><br><span class="line">		<span class="keyword">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">file_operations</span>	*<span class="title">i_fop</span>;</span>	<span class="comment">/* former -&gt;i_op-&gt;default_file_ops */</span></span><br><span class="line">		<span class="keyword">void</span> (*free_inode)(struct inode *);</span><br><span class="line">	&#125;;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">file_lock_context</span>	*<span class="title">i_flctx</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">address_space</span>	<span class="title">i_data</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">list_head</span>	<span class="title">i_devices</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;writeback_control控制写入方式和页面的数据，可以和bio结构组成每个文件系统独有的bio结构，加上上面的inode中的address_space数据就可以构成一个bio，然后提交到io层</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">writeback_control</span> &#123;</span></span><br><span class="line">	<span class="keyword">long</span> nr_to_write;		<span class="comment">/* 要写的页数 */</span></span><br><span class="line">	<span class="keyword">long</span> pages_skipped;		<span class="comment">/* 未写的页数 */</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 如果不为0，则为要写的页 */</span></span><br><span class="line">	<span class="keyword">loff_t</span> range_start;</span><br><span class="line">	<span class="keyword">loff_t</span> range_end;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">enum</span> writeback_sync_modes sync_mode;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">unsigned</span> for_kupdate:<span class="number">1</span>;		<span class="comment">/* 定期回写 */</span></span><br><span class="line">	<span class="keyword">unsigned</span> for_background:<span class="number">1</span>;	<span class="comment">/* 后台回写 */</span></span><br><span class="line">	<span class="keyword">unsigned</span> tagged_writepages:<span class="number">1</span>;	<span class="comment">/* 写入标记 */</span></span><br><span class="line">	<span class="keyword">unsigned</span> for_reclaim:<span class="number">1</span>;		<span class="comment">/* 从页面分配器调用 */</span></span><br><span class="line">	<span class="keyword">unsigned</span> range_cyclic:<span class="number">1</span>;	<span class="comment">/* 循环写开始位置 */</span></span><br><span class="line">	<span class="keyword">unsigned</span> for_sync:<span class="number">1</span>;		<span class="comment">/* sync(2) WB_SYNC_ALL 回写 */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<h3 id="二、writeback实现策略"><a href="#二、writeback实现策略" class="headerlink" title="二、writeback实现策略"></a>二、writeback实现策略</h3><h4 id="2-1-文件系统"><a href="#2-1-文件系统" class="headerlink" title="2.1 文件系统"></a>2.1 文件系统</h4><p>&emsp;&emsp;不同的文件系统具有不同的性能以及适合的场景，在ext4文件系统向磁盘写入数据时有三种模式来选择日志数据的更新</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Ext4 inode日志模式</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> EXT4_INODE_JOURNAL_DATA_MODE	0x01 <span class="comment">/* 日志数据模式 */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> EXT4_INODE_ORDERED_DATA_MODE	0x02 <span class="comment">/* 有序数据模式 */</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> EXT4_INODE_WRITEBACK_DATA_MODE	0x04 <span class="comment">/* 写回数据模式 */</span></span></span><br></pre></td></tr></table></figure>
+<blockquote>
+<ul>
+<li><strong>日志</strong>是最低风险的模式，在将数据和元数据提交到文件系统之前，将数据和元数据都写入日志。这样可以确保要写入的文件以及整个文件系统的一致性，但是会大大降低性能。</li>
+<li>在大多数Linux发行版中，<strong>有序</strong>模式是默认模式。有序模式将元数据写入日志，但将数据直接提交至文件系统。顾名思义，这里的操作<em>顺序</em>是严格的：首先，将元数据提交给日记；然后，将元数据提交给日志。其次，将数据写入文件系统，然后日志中的关联元数据才刷新到文件系统本身。这样可以确保在发生崩溃的情况下，与未完成写入相关联的元数据仍保留在日志中，并且文件系统可以在回滚日志的同时清理那些未完成的写入。在有序模式下，崩溃可能会导致文件崩溃或在崩溃期间被主动写入的文件损坏，但是可以保证文件系统本身以及未被主动写入的文件是安全的。</li>
+<li><strong>写回</strong>是第三种也是最不安全的日记模式。在写回模式下（如有序模式），将记录元数据，但不记录数据。与有序模式不同，元数据和数据都可以按照为了获得最佳性能而有意义的任何顺序进行写入。这可以显着提高性能，但安全性要差得多。尽管写回模式仍然可以保证文件系统本身的安全性，但是在崩溃期间<em>或</em>崩溃之前写入的文件很容易丢失或损坏</li>
+</ul>
+</blockquote>
+<p>&emsp;&emsp;向磁盘写入数据主要是将meta data（inode）和file data写入到磁盘，file data用内存中的page代表，即将inode和page写入到物理设备，最底层为文件系统相关的驱动接口，与具体的文件系统相关，log data则保存在磁盘上面，需要通过写入更新</p>
+<p>&emsp;&emsp;writeback相关的标志</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">	I_DIRTY_SYNC		Inode为脏,但不是一定要写入</span></span><br><span class="line"><span class="comment">	I_DIRTY_DATASYNC	Inode中与数据相关的更改待处理，需要被写入</span></span><br><span class="line"><span class="comment">	I_DIRTY_PAGES		Inode的page脏, Inode本身可能是干净的</span></span><br><span class="line"><span class="comment">	I_DIRTY_TIME		Inode的时间戳为脏，有以上标志则此标志被清除</span></span><br><span class="line"><span class="comment">	I_SYNC				writeback运行标志</span></span><br><span class="line"><span class="comment">*/</span></span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;kernel在/proc/sys/vm/中预留了一些可以调整脏数据回写的参数</p>
+<p><strong>dirty_background_bytes：</strong>后台内核线程执行的最低脏内存量</p>
+<p><strong>dirty_background_ratio：</strong>后台内核线程执行的可用内存页与脏页比例（与上面的参数只能二选一）</p>
+<p><strong>dirty_bytes（vm_dirty_bytes）：</strong>内核线程开始回写的脏内存量（最低两页8k，与dirty_ratio二选一）</p>
+<p><strong>dirty_ratio（vm_dirty_ratio）：</strong>内核线程开始回写的可用内存和脏内存比率</p>
+<p><strong>dirty_expire_centisecs（dirty_expire_interval）：</strong>定义脏数据何时足够旧，下一次唤醒内核线程被写入（百分之一秒）</p>
+<p><strong>dirtytime_expire_seconds（dirtytime_expire_interval）：</strong>定义dirty inode何时足够旧，可以由内核线程进行回写，用作唤醒dirtytime_writeback线程的间隔</p>
+<p><strong>dirty_writeback_centisecs（dirty_writeback_interval）：</strong>多久唤醒一次内核线程</p>
+<h4 id="2-2-内核线程调度"><a href="#2-2-内核线程调度" class="headerlink" title="2.2 内核线程调度"></a>2.2 内核线程调度</h4><p>&emsp;&emsp;writeback中的异步实现机制为work_struct加内核线程，当前版本由writeback内核线程和kworker线程实现异步，首先在初始化的时候会创建一个writeback内核线程，用于工作队列的函数处理，内存压力、定时回写和sync通过调用wakeup_flusher_threads来唤醒writeback线程，kworker线程负责执行内核工作队列，其中的work由wb_workfn处理，每次在kworker线程组中随机指定一个线程来完成，因为工作队列指定了ubound参数，也就是不绑定任何cpu。</p>
+<p>&emsp;&emsp;首先，在空闲的情况下每次执行回写都会重新计算下一次回写的时间，其中还会进行一些阈值的判断，来决定是否进行background方式的回写，当有内存压力时则会进行多次异步方式的回写，并在应用程序申请内存时进行判断内存是否达到阈值，达到阈值就进行回写，执行系统调用sync会在5s的间隔中插入一次异步回写，并会执行多次同步回写。</p>
+<p>&emsp;&emsp;使用的线程组为</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">1</span> I root      <span class="number">08</span>:<span class="number">54</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> [kworker/u32:<span class="number">1</span>-events_unbound]</span><br><span class="line"><span class="number">1</span> I root      <span class="number">09</span>:<span class="number">51</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> [kworker/u32:<span class="number">2</span>-flush<span class="number">-259</span>:<span class="number">0</span>]</span><br><span class="line"><span class="number">1</span> I root      <span class="number">09</span>:<span class="number">57</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> [kworker/u32:<span class="number">0</span>-events_power_efficient]</span><br><span class="line"><span class="number">1</span> I root      <span class="number">10</span>:<span class="number">05</span> ?        <span class="number">00</span>:<span class="number">00</span>:<span class="number">00</span> [kworker/u32:<span class="number">3</span>]</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;在wb_workfn中会将新的work插入到work_queue，并根据是否延时执行将work状态标记为WORK_STRUCT_PENDING_BIT（等待执行）状态，内核线程不为空则唤醒kworker线程处理函数处理work。</p>
+<p>&emsp;&emsp;异步实现主要是通过内核中的cmwq，建立一个全局的工作队列bdi_wq来将所有的work插入到此队列中，workqueue定义和实现接口</p>
+<p>&emsp;&emsp;初始化过程，创建工作队列并绑定处理函数</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">	<span class="comment">/* 定义 */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">workqueue_struct</span> *<span class="title">bdi_wq</span>;</span></span><br><span class="line">	<span class="comment">/* 增加work */</span></span><br><span class="line">	queue_delayed_work(bdi_wq, &amp;wb-&gt;dwork, timeout);</span><br><span class="line"></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">int</span> __<span class="function">init <span class="title">default_bdi_init</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> err;</span><br><span class="line">	<span class="comment">/* 分配内存 */</span></span><br><span class="line">	bdi_wq = alloc_workqueue(<span class="string">"writeback"</span>, WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_SYSFS, <span class="number">0</span>);</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">wb_init</span><span class="params">(struct bdi_writeback *wb, struct backing_dev_info *bdi,</span></span></span><br><span class="line"><span class="function"><span class="params">		   <span class="keyword">gfp_t</span> gfp)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	...  </span><br><span class="line">	INIT_LIST_HEAD(&amp;wb-&gt;work_list);</span><br><span class="line">	INIT_DELAYED_WORK(&amp;wb-&gt;dwork, wb_workfn); <span class="comment">//wb_workfn为工作队列的处理函数</span></span><br><span class="line">	wb-&gt;dirty_sleep = jiffies;</span><br><span class="line">	...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* </span></span><br><span class="line"><span class="comment"> *文件的时间戳，共有三个：ctime指inode上一次变动的时间，mtime指文件内容上一次变动的时间，atime指文件上一次打开的时间。</span></span><br><span class="line"><span class="comment"> * 由atime引起inode变脏，如果有其他回写则不会进行此回写，根据dirtytime_writeback_centisecs延时唤醒,12h一次 */</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="title">DECLARE_DELAYED_WORK</span><span class="params">(dirtytime_work, wakeup_dirtytime_writeback)</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">wakeup_dirtytime_writeback</span><span class="params">(struct work_struct *w)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">		list_for_each_entry_rcu(wb, &amp;bdi-&gt;wb_list, bdi_node)</span><br><span class="line">			<span class="keyword">if</span> (!list_empty(&amp;wb-&gt;b_dirty_time))</span><br><span class="line">				wb_wakeup(wb);</span><br><span class="line"></span><br><span class="line">	schedule_delayed_work(&amp;dirtytime_work, dirtytime_expire_interval * HZ);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;当调用唤醒writeback线程时主要是在线程池中找到一个可用的线程并通过调度安排一个待处理的work，将其置于WORK_BUSY_RUNNING</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">wb_wakeup</span><span class="params">(struct bdi_writeback *wb)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (test_bit(WB_registered, &amp;wb-&gt;state))</span><br><span class="line">		mod_delayed_work(bdi_wq, &amp;wb-&gt;dwork, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">bool</span> <span class="title">mod_delayed_work_on</span><span class="params">(<span class="keyword">int</span> cpu, struct workqueue_struct *wq,</span></span></span><br><span class="line"><span class="function"><span class="params">			 struct delayed_work *dwork, <span class="keyword">unsigned</span> <span class="keyword">long</span> delay)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">/* 找到一个pending的work */</span></span><br><span class="line">	<span class="keyword">do</span> &#123;</span><br><span class="line">		ret = try_to_grab_pending(&amp;dwork-&gt;work, <span class="literal">true</span>, &amp;flags);</span><br><span class="line">	&#125; <span class="keyword">while</span> (unlikely(ret == -EAGAIN));</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 修改work的timer */</span></span><br><span class="line">	<span class="keyword">if</span> (likely(ret &gt;= <span class="number">0</span>)) &#123;</span><br><span class="line">		__queue_delayed_work(cpu, wq, dwork, delay);</span><br><span class="line">		local_irq_restore(flags);</span><br><span class="line">	&#125;</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;数据结构访问关系</p>
+<p><img src="/home/jian/Documents/work/调研报告/structs.png" alt="structs" style="zoom:25%;"></p>
+<h4 id="2-3-定期回写"><a href="#2-3-定期回写" class="headerlink" title="2.3 定期回写"></a>2.3 定期回写</h4><p>&emsp;&emsp;定期回写是指每隔一段时间就去唤醒writeback线程，唤醒线程的同时会触发绑定的工作队列处理函数–wb_workfn，函数栈为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">submit_bio</span><br><span class="line">ext4_writepages</span><br><span class="line">do_writepages</span><br><span class="line">__writeback_single_inode</span><br><span class="line">writeback_sb_inodes</span><br><span class="line">wb_writeback</span><br><span class="line">wb_workfn</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">wb_workfn</span><span class="params">(struct work_struct *work)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	...</span><br><span class="line">	set_worker_desc(<span class="string">"flush-%s"</span>, bdi_dev_name(wb-&gt;bdi));</span><br><span class="line">	current-&gt;flags |= PF_SWAPWRITE;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (likely(!current_is_workqueue_rescuer() ||</span><br><span class="line">		   !test_bit(WB_registered, &amp;wb-&gt;state))) &#123;</span><br><span class="line">		<span class="comment">/* 正常情况，直到work_list为空停止运行 */</span></span><br><span class="line">		<span class="keyword">do</span> &#123;</span><br><span class="line">			pages_written = wb_do_writeback(wb);</span><br><span class="line">		&#125; <span class="keyword">while</span> (!list_empty(&amp;wb-&gt;work_list));</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">/* 紧急情况 */</span></span><br><span class="line">		pages_written = writeback_inodes_wb(wb, <span class="number">1024</span>,</span><br><span class="line">						    WB_REASON_FORKER_THREAD);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* work_list非空则再次唤醒执行 */</span></span><br><span class="line">	<span class="keyword">if</span> (!list_empty(&amp;wb-&gt;work_list))</span><br><span class="line">		wb_wakeup(wb);</span><br><span class="line">    <span class="comment">/* dirty inode在其他list中还有，设置延后唤醒，dirty_writeback_interval设置为500 */</span></span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (wb_has_dirty_io(wb) &amp;&amp; dirty_writeback_interval)</span><br><span class="line">		wb_wakeup_delayed(wb);</span><br><span class="line"></span><br><span class="line">	current-&gt;flags &amp;= ~PF_SWAPWRITE;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">long</span> <span class="title">wb_do_writeback</span><span class="params">(struct bdi_writeback *wb)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">/* 如果设置了running标志则可以直接执行wb_writeback函数 */</span></span><br><span class="line">	set_bit(WB_writeback_running, &amp;wb-&gt;state);</span><br><span class="line">	<span class="keyword">while</span> ((work = get_next_work_item(wb)) != <span class="literal">NULL</span>) &#123;</span><br><span class="line">		wrote += wb_writeback(wb, work);</span><br><span class="line">		finish_writeback_work(wb, work);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 检查start_all标志，判断是否需要进行全部回写 */</span></span><br><span class="line">	wrote += wb_check_start_all(wb);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 进行定期回写检查，检查间隔时间是否达到了5s，没有则直接返回，有则进行wb_writeback */</span></span><br><span class="line">	wrote += wb_check_old_data_flush(wb);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">/* 进行后台检查，检查脏页数量是否超过了 dirty_background_bytes 或 dirty_background_ratio，</span></span><br><span class="line"><span class="comment">    超过了配置的参数则需要进行回写 */</span></span><br><span class="line">    wrote += wb_check_background_flush(wb);</span><br><span class="line">	clear_bit(WB_writeback_running, &amp;wb-&gt;state);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> wrote;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">long</span> <span class="title">wb_writeback</span><span class="params">(struct bdi_writeback *wb,</span></span></span><br><span class="line"><span class="function"><span class="params">			 struct wb_writeback_work *work)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	...</span><br><span class="line">	<span class="keyword">for</span> (;;) &#123;</span><br><span class="line">		<span class="comment">/* 脏页已被处理 */</span></span><br><span class="line">		<span class="keyword">if</span> (work-&gt;nr_pages &lt;= <span class="number">0</span>)</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* 后台回写和定期回写在work_list为空时可能永远运行，所以直接退出，以便这时其他的work能够被处理 */</span></span><br><span class="line">		<span class="keyword">if</span> ((work-&gt;for_background || work-&gt;for_kupdate) &amp;&amp;</span><br><span class="line">		    !list_empty(&amp;wb-&gt;work_list))</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* 对于后台回写，低于dirty_background_ratio则不需要回写 */</span></span><br><span class="line">		<span class="keyword">if</span> (work-&gt;for_background &amp;&amp; !wb_over_bg_thresh(wb))</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* 后台回写和定期回写是特殊的，需要包含所有的inode节点 */</span></span><br><span class="line">		<span class="keyword">if</span> (work-&gt;for_kupdate) &#123;</span><br><span class="line">			dirtied_before = jiffies - msecs_to_jiffies(dirty_expire_interval * <span class="number">10</span>);</span><br><span class="line">		&#125; <span class="keyword">else</span> <span class="keyword">if</span> (work-&gt;for_background)</span><br><span class="line">			dirtied_before = jiffies;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (list_empty(&amp;wb-&gt;b_io))</span><br><span class="line">			queue_io(wb, work, dirtied_before);</span><br><span class="line">		<span class="keyword">if</span> (work-&gt;sb)</span><br><span class="line">			progress = writeback_sb_inodes(work-&gt;sb, wb, work);</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">			progress = __writeback_inodes_wb(wb, work);</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* 处理完毕 */</span></span><br><span class="line">		<span class="keyword">if</span> (progress)</span><br><span class="line">			<span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">        <span class="comment">/* b_more_io list也为空则说明全部处理完毕 */</span></span><br><span class="line">		<span class="keyword">if</span> (list_empty(&amp;wb-&gt;b_more_io))</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		<span class="comment">/* 等待可用inode节点，否则忙碌 */</span></span><br><span class="line">		trace_writeback_wait(wb, work);</span><br><span class="line">		inode = wb_inode(wb-&gt;b_more_io.prev);</span><br><span class="line">		<span class="comment">/* 重新回到睡眠状态 */</span></span><br><span class="line">		inode_sleep_on_writeback(inode);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> nr_pages - work-&gt;nr_pages;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">writeback_control</span> <span class="title">wbc</span> = &#123;</span></span><br><span class="line">	.sync_mode		= work-&gt;sync_mode,</span><br><span class="line">	.tagged_writepages	= work-&gt;tagged_writepages,</span><br><span class="line">	.for_kupdate		= work-&gt;for_kupdate,</span><br><span class="line">	.for_background		= work-&gt;for_background,</span><br><span class="line">	.for_sync		= work-&gt;for_sync,</span><br><span class="line">	.range_cyclic		= work-&gt;range_cyclic,</span><br><span class="line">	.range_start		= <span class="number">0</span>,</span><br><span class="line">	.range_end		= LLONG_MAX,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">dirty_writeback_centisecs_handler</span><span class="params">(struct ctl_table *table, <span class="keyword">int</span> write,</span></span></span><br><span class="line"><span class="function"><span class="params">		<span class="keyword">void</span> *buffer, <span class="keyword">size_t</span> *length, <span class="keyword">loff_t</span> *ppos)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">int</span> old_interval = dirty_writeback_interval;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* 前面通过遍历bdis和wbs的方式很麻烦，这里通过/proc文件系统进行定期唤醒 */</span></span><br><span class="line">	<span class="keyword">if</span> (!ret &amp;&amp; write &amp;&amp; dirty_writeback_interval &amp;&amp;</span><br><span class="line">		dirty_writeback_interval != old_interval)</span><br><span class="line">		wakeup_flusher_threads(WB_REASON_PERIODIC);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;在writeback_sb_inodes函数中构建writeback_control结构用于将inode节点的脏page回写到block设备，处理完所有的dirty inode再重新通过wb_wakeup_delayed在5s之后唤醒，周而复始。</p>
+<p>&emsp;&emsp;由以上的代码可知，定期回写采用cmwq，属于异步方式。</p>
+<h4 id="2-4-系统调用回写"><a href="#2-4-系统调用回写" class="headerlink" title="2.4 系统调用回写"></a>2.4 系统调用回写</h4><p>&emsp;&emsp;系统调用sync、fsync等也会触发回写：</p>
+<ul>
+<li><p><code>sync( )</code>允许进程将所有脏缓冲区刷新到磁盘</p>
+</li>
+<li><p><code>fsync( )</code>允许进程将属于特定打开文件的所有块刷新到磁盘</p>
+</li>
+<li><p><code>fdatasync( )</code>与<code>fsync( )</code>相似，但只刷新data数据，不会刷新文件的inode块</p>
+</li>
+</ul>
+<p>&emsp;&emsp;sync系统调用栈为</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">b&apos;submit_bio&apos;</span><br><span class="line">b&apos;__block_write_full_page&apos;</span><br><span class="line">b&apos;block_write_full_page&apos;</span><br><span class="line">b&apos;blkdev_writepage&apos;</span><br><span class="line">b&apos;__writepage&apos;</span><br><span class="line">b&apos;write_cache_pages&apos;</span><br><span class="line">b&apos;generic_writepages&apos;</span><br><span class="line">b&apos;blkdev_writepages&apos;</span><br><span class="line">b&apos;do_writepages&apos;</span><br><span class="line">b&apos;__filemap_fdatawrite_range&apos;</span><br><span class="line">b&apos;filemap_fdatawrite&apos;</span><br><span class="line">b&apos;fdatawrite_one_bdev&apos;</span><br><span class="line">b&apos;iterate_bdevs&apos;</span><br><span class="line">b&apos;ksys_sync&apos;</span><br><span class="line">b&apos;__x64_sys_sync&apos;</span><br><span class="line">b&apos;do_syscall_64&apos;</span><br><span class="line">b&apos;entry_SYSCALL_64_after_hwframe&apos;</span><br><span class="line">  --</span><br><span class="line">b&apos;[unknown]&apos;</span><br><span class="line">  b&apos;sync&apos;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;在sync系统调用对应的ksys_sync处理函数中，第一步先是唤醒writeback线程，采用异步方式，异步方式与上面定期唤醒的方式类似，只是调用的接口不一样，这里唤醒的原因为WB_REASON_SYNC，之后在fdatawrite_one_bdev函数中把回写的请求提交到块io层</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">ksys_sync</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> nowait = <span class="number">0</span>, wait = <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	wakeup_flusher_threads(WB_REASON_SYNC);</span><br><span class="line">	iterate_supers(sync_inodes_one_sb, <span class="literal">NULL</span>);</span><br><span class="line">	iterate_supers(sync_fs_one_sb, &amp;nowait);</span><br><span class="line">	iterate_supers(sync_fs_one_sb, &amp;wait);</span><br><span class="line">	iterate_bdevs(fdatawrite_one_bdev, <span class="literal">NULL</span>);</span><br><span class="line">	iterate_bdevs(fdatawait_one_bdev, <span class="literal">NULL</span>);</span><br><span class="line">	<span class="keyword">if</span> (unlikely(laptop_mode))</span><br><span class="line">		laptop_sync_completion();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;唤醒线程打印信息如下，下面的为sync触发的（stackcount）</p>
+<p><img src="/home/jian/Documents/work/调研报告/Screenshot from 2021-03-30 09-22-23.png" alt="Screenshot from 2021-03-30 09-22-23"></p>
+<p>&emsp;&emsp;这里在执行sync系统调用后，即执行了异步的唤醒，同时还直接调用了回写的接口，属于同步的方式，在抓取submit_bio时发现每次执行的次数是不确定的，原因就是因为采用循环等待的方式不停的去判断回写失败发生的时刻，当回写失败同时也意味着上一次的脏页全部回写完成</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">do_writepages</span><span class="params">(struct address_space *mapping, struct writeback_control *wbc)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">int</span> ret;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (wbc-&gt;nr_to_write &lt;= <span class="number">0</span>)</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">	<span class="keyword">while</span> (<span class="number">1</span>) &#123;</span><br><span class="line">		<span class="keyword">if</span> (mapping-&gt;a_ops-&gt;writepages)</span><br><span class="line">			ret = mapping-&gt;a_ops-&gt;writepages(mapping, wbc);</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">			ret = generic_writepages(mapping, wbc);</span><br><span class="line">		<span class="keyword">if</span> ((ret != -ENOMEM) || (wbc-&gt;sync_mode != WB_SYNC_ALL))</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		cond_resched();</span><br><span class="line">		congestion_wait(BLK_RW_ASYNC, HZ/<span class="number">50</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="2-5-内存压力回写"><a href="#2-5-内存压力回写" class="headerlink" title="2.5 内存压力回写"></a>2.5 内存压力回写</h4><p>&emsp;&emsp;首先上述两种方式的回写中异步方式都会去调用wb_do_writeback这个函数，这个函数中的background方式的回写利用设置的dirty_background_ratio和dirty_background_bytes两个参数来检测脏页在可用内存中的比例和数量，定期回写5s检测一次，所以这里也会5s进行一次检测，异步方式，通过唤醒内核线程</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">long</span> <span class="title">wb_check_background_flush</span><span class="params">(struct bdi_writeback *wb)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">if</span> (wb_over_bg_thresh(wb)) &#123; <span class="comment">//检查当前脏页是否超过dirty_background_ratio参数</span></span><br><span class="line">		<span class="class"><span class="keyword">struct</span> <span class="title">wb_writeback_work</span> <span class="title">work</span> = &#123;</span></span><br><span class="line">			.nr_pages	= LONG_MAX,</span><br><span class="line">			.sync_mode	= WB_SYNC_NONE,</span><br><span class="line">			.for_background	= <span class="number">1</span>,</span><br><span class="line">			.range_cyclic	= <span class="number">1</span>,</span><br><span class="line">			.reason		= WB_REASON_BACKGROUND,</span><br><span class="line">		&#125;;</span><br><span class="line">		<span class="keyword">return</span> wb_writeback(wb, &amp;work);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;上面的方式属于被动调用，从而检查脏页所占内存，当内存不足时5s一次的检查肯定是不够的，这就需要另一种方式能够立即察觉到内存不足的情况并作出反映，就是在真正给应用程序分配物理页（缺页中断）时判断可用内存的状态，函数栈如下，属于同步方式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">b&apos;domain_dirty_limits&apos;</span><br><span class="line">b&apos;balance_dirty_pages_ratelimited&apos;</span><br><span class="line">b&apos;fault_dirty_shared_page&apos;</span><br><span class="line">b&apos;do_wp_page&apos;</span><br><span class="line">b&apos;__handle_mm_fault&apos;</span><br><span class="line">b&apos;handle_mm_fault&apos;</span><br><span class="line">b&apos;do_user_addr_fault&apos;</span><br><span class="line">b&apos;exc_page_fault&apos;</span><br><span class="line">b&apos;asm_exc_page_fault&apos;</span><br><span class="line">  --</span><br><span class="line">b&apos;[unknown]&apos;</span><br><span class="line">b&apos;[unknown]&apos;</span><br><span class="line">  b&apos;systemd-journal&apos; [362]</span><br><span class="line">  1</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;其中主要函数是balance_dirty_pages_ratelimited，这里和上面background的方式类似，只是接口不一样，再向下调用balance_dirty_pages，最后都是调用domain_dirty_limits</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">void</span> <span class="title">domain_dirty_limits</span><span class="params">(struct dirty_throttle_control *dtc)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> bytes = vm_dirty_bytes;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> bg_bytes = dirty_background_bytes;</span><br><span class="line">	<span class="comment">/* convert ratios to per-PAGE_SIZE for higher precision */</span></span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> ratio = (vm_dirty_ratio * PAGE_SIZE) / <span class="number">100</span>;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> bg_ratio = (dirty_background_ratio * PAGE_SIZE) / <span class="number">100</span>;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> thresh;</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> bg_thresh;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">tsk</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* gdtc is !NULL iff @dtc is for memcg domain */</span></span><br><span class="line">	<span class="keyword">if</span> (gdtc) &#123;</span><br><span class="line">		<span class="keyword">unsigned</span> <span class="keyword">long</span> global_avail = gdtc-&gt;avail;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (bytes)</span><br><span class="line">			ratio = min(DIV_ROUND_UP(bytes, global_avail),</span><br><span class="line">				    PAGE_SIZE);</span><br><span class="line">		<span class="keyword">if</span> (bg_bytes)</span><br><span class="line">			bg_ratio = min(DIV_ROUND_UP(bg_bytes, global_avail),</span><br><span class="line">				       PAGE_SIZE);</span><br><span class="line">		bytes = bg_bytes = <span class="number">0</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 计算ratio */</span></span><br><span class="line">	<span class="keyword">if</span> (bytes)</span><br><span class="line">		thresh = DIV_ROUND_UP(bytes, PAGE_SIZE);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		thresh = (ratio * available_memory) / PAGE_SIZE;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 计算bg_ratio */</span></span><br><span class="line">	<span class="keyword">if</span> (bg_bytes)</span><br><span class="line">		bg_thresh = DIV_ROUND_UP(bg_bytes, PAGE_SIZE);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		bg_thresh = (bg_ratio * available_memory) / PAGE_SIZE;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/* 更新数据 */</span></span><br><span class="line">	<span class="keyword">if</span> (bg_thresh &gt;= thresh)</span><br><span class="line">		bg_thresh = thresh / <span class="number">2</span>;</span><br><span class="line">	tsk = current;</span><br><span class="line">	<span class="keyword">if</span> (rt_task(tsk)) &#123;</span><br><span class="line">		bg_thresh += bg_thresh / <span class="number">4</span> + global_wb_domain.dirty_limit / <span class="number">32</span>;</span><br><span class="line">		thresh += thresh / <span class="number">4</span> + global_wb_domain.dirty_limit / <span class="number">32</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	dtc-&gt;thresh = thresh;</span><br><span class="line">	dtc-&gt;bg_thresh = bg_thresh;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&emsp;&emsp;上面计算内存中的数据，每一次有进程将内存中的页弄脏都会调用一次，最后判断是否需要回写</p>
+<h4 id="2-6-其他"><a href="#2-6-其他" class="headerlink" title="2.6 其他"></a>2.6 其他</h4><p>&emsp;&emsp;从用户层来看，影响文件回写的因素与/proc/sys/vm/dirty*相关的参数相关</p>
+<blockquote>
+<p>在未设置vm.dirty_background_bytes和vm.dirty_bytes前提下总结下dirty_background_ratio和dirty_ratio的作用就是:</p>
+<p>available_memory=NR_FREE_PAGES-dirty_balance_reserve+NR_INACTIVE_FILE+NR_ACTIVE_FILE-(min_free_kbytes/4)</p>
+<p>background_thresh=(dirty_background_ratio <em> available_memory) / 100=(vm.dirty_background_ratio</em>available_memory)/100</p>
+<p>dirty_thresh = (vm_dirty_ratio <em> available_memory) / 100 =(vm.dirty_ratio</em>available_memory)/100</p>
+<p>dirty_background_ratio的值必须小于dirty_ratio，如果设置dirty_background_ratio大于或等于dirty_ratio时，最后生效的值实际上为:</p>
+<p>dirty_background_ratio=dirty_ratio/2. 之所以要保证dirty_ratio比dirty_background_ratio大的原因是为了避免因系统脏页数量小于background_thresh未唤醒后台进程回写脏数据，大于dirty_thresh导致应用进程因等待脏数据回写而进入IO阻塞状态。</p>
+<p>根据上面的分析，可以总结出针对不同场景这些参数的调整策略：</p>
+<p>vm.dirty_background_ratio</p>
+<p>vm.dirty_ratio</p>
+<p>vm.dirty_expire_centisecs</p>
+<p>vm.dirty_writeback_centisecs</p>
+<ol>
+<li><p>追求<a href="https://cloud.tencent.com/solution/data_protection?from=10680" target="_blank" rel="noopener">数据安全</a>的场景适当调小这四个参数让脏数据尽快回刷磁盘;</p>
+</li>
+<li><p>追求更高的性能而忽略丢数据风险则适当调大这些参数，增加内存缓存，减少IO操作;</p>
+</li>
+<li><p>有不定时IO突增情况则适当调小dirty_background_ratio和增大dirty_ratio.</p>
+</li>
+</ol>
+<p>假设总内存为250G，IO带宽为100MB/s，那么理论上如果要尽可能确保所有脏数据在120s（hung_task_timeout_secs默认值）内全部落盘，dirty_background_ratio应该设置为多大？</p>
+<p>按iostat监控到的带宽100MB/s计算</p>
+<p>120s x 100MB/s = 12000MB=12GB</p>
+<p>12GB/250G = 4.8%</p>
+<p>4.8%取整相当于dirty_background_ratio的值要设置为4。带宽和总内存都不变的前提下，如果要确保dirty数据要全部在60s内落盘则将dirty_background_ratio设置为2.</p>
+<p><a href="https://cloud.tencent.com/developer/article/1631974" target="_blank" rel="noopener">https://cloud.tencent.com/developer/article/1631974</a></p>
+</blockquote>
+<p><strong>FAQ</strong></p>
+<p>1.内核线程如何被调度去处理work</p>
+<p>2.file data如何被修改，address_space与page的映射关系</p>
+
+      
+    </div>
+
+    
+
+    
+    
+    
+
+    
+
+    
+      
+    
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Linux/" rel="tag"><i class="fa fa-tag"></i> Linux</a>
+          
+            <a href="/tags/文件系统/" rel="tag"><i class="fa fa-tag"></i> 文件系统</a>
+          
+            <a href="/tags/writeback/" rel="tag"><i class="fa fa-tag"></i> writeback</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/04/15/hexo将Blog转到Linux/" rel="next" title="hexo将Blog转到Linux">
+                <i class="fa fa-chevron-left"></i> hexo将Blog转到Linux
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+  </div>
+
+
+          </div>
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            Table of Contents
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            Overview
+          </li>
+        </ul>
+      
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/avatar.jpg" alt="ZhangJian">
+            
+              <p class="site-author-name" itemprop="name">ZhangJian</p>
+              <p class="site-description motion-element" itemprop="description">厚积薄发</p>
+          </div>
+
+          
+            <nav class="site-state motion-element">
+              
+                <div class="site-state-item site-state-posts">
+                
+                  <a href="/archives/">
+                
+                    <span class="site-state-item-count">13</span>
+                    <span class="site-state-item-name">posts</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-categories">
+                  <a href="/categories/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">5</span>
+                    <span class="site-state-item-name">categories</span>
+                  </a>
+                </div>
+              
+
+              
+                
+                
+                <div class="site-state-item site-state-tags">
+                  <a href="/tags/index.html">
+                    
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                      
+                    
+                    <span class="site-state-item-count">22</span>
+                    <span class="site-state-item-name">tags</span>
+                  </a>
+                </div>
+              
+            </nav>
+          
+
+          
+            <div class="feed-link motion-element">
+              <a href="/atom.xml" rel="alternate">
+                <i class="fa fa-rss"></i>
+                RSS
+              </a>
+            </div>
+          
+
+          
+            <div class="links-of-author motion-element">
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://github.com/FlyingCatZ" title="GitHub &rarr; https://github.com/FlyingCatZ" rel="noopener" target="_blank"><i class="fa fa-fw fa-github"></i>GitHub</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="mailto:jianzhang0248@gmail.com" title="E-Mail &rarr; mailto:jianzhang0248@gmail.com" rel="noopener" target="_blank"><i class="fa fa-fw fa-envelope"></i>E-Mail</a>
+                </span>
+              
+                <span class="links-of-author-item">
+                  
+                  
+                    
+                  
+                  
+                    
+                  
+                  <a href="https://t.me/Dicy_z" title="Telegram &rarr; https://t.me/Dicy_z" rel="noopener" target="_blank"><i class="fa fa-fw fa-telegram"></i>Telegram</a>
+                </span>
+              
+            </div>
+          
+
+          
+
+          
+          
+            <div class="links-of-blogroll motion-element links-of-blogroll-block">
+              <div class="links-of-blogroll-title">
+                <i class="fa  fa-fw fa-link"></i>
+                Links
+              </div>
+              <ul class="links-of-blogroll-list">
+                
+                  <li class="links-of-blogroll-item">
+                    <a href="https://www.kernel.org" title="https://www.kernel.org" rel="noopener" target="_blank">Linux内核</a>
+                  </li>
+                
+              </ul>
+            </div>
+          
+		  
+		  <link rel="stylesheet" href="/dist/APlayer.min.css">
+<div id="aplayer"></div>
+<script type="text/javascript" src="/dist/APlayer.min.js"></script>
+<script type="text/javascript" src="/dist/music.js"></script>
+		 
+          
+            
+          
+          
+
+        </div>
+      </div>
+
+      
+      <!--noindex-->
+        <div class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+            
+            
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#前言"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#一、writeback参数分析"><span class="nav-number">2.</span> <span class="nav-text">一、writeback参数分析</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-1-writeback-reason"><span class="nav-number">2.1.</span> <span class="nav-text">1.1 writeback reason</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#1-2-数据结构"><span class="nav-number">2.2.</span> <span class="nav-text">1.2 数据结构</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二、writeback实现策略"><span class="nav-number">3.</span> <span class="nav-text">二、writeback实现策略</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#2-1-文件系统"><span class="nav-number">3.1.</span> <span class="nav-text">2.1 文件系统</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-2-内核线程调度"><span class="nav-number">3.2.</span> <span class="nav-text">2.2 内核线程调度</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-3-定期回写"><span class="nav-number">3.3.</span> <span class="nav-text">2.3 定期回写</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-4-系统调用回写"><span class="nav-number">3.4.</span> <span class="nav-text">2.4 系统调用回写</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-5-内存压力回写"><span class="nav-number">3.5.</span> <span class="nav-text">2.5 内存压力回写</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-6-其他"><span class="nav-number">3.6.</span> <span class="nav-text">2.6 其他</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </div>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+  
+    <div id="sidebar-dimmer"></div>
+  
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love" id="animate">
+    <i class="fa fa-heart" aria-hidden="true"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">ZhangJian</span>
+
+  
+
+  
+</div>
+
+
+  <div class="powered-by">Powered by <a href="https://hexo.io" class="theme-link" rel="noopener" target="_blank">Hexo</a> v3.9.0</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">Theme – <a href="https://theme-next.org" class="theme-link" rel="noopener" target="_blank">NexT.Mist</a> v7.0.1</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+    
+
+    
+      <div>
+        <div class="addthis_inline_share_toolbox">
+  <script src="//s7.addthis.com/js/300/addthis_widget.js#pubid=ra-5cb5dc6394c9f52d" async="async"></script>
+</div>
+
+      </div>
+    
+  </div>
+
+  
+
+<script>
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    
+    
+  
+  <script color="0,0,255" opacity="0.5" zindex="-1" count="99" src="/lib/canvas-nest/canvas-nest.min.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+
+  
+
+
+  <script src="/js/src/utils.js?v=7.0.1"></script>
+
+  <script src="/js/src/motion.js?v=7.0.1"></script>
+
+
+
+  
+  
+
+
+  <script src="/js/src/schemes/muse.js?v=7.0.1"></script>
+
+
+
+
+  
+  <script src="/js/src/scrollspy.js?v=7.0.1"></script>
+<script src="/js/src/post-details.js?v=7.0.1"></script>
+
+
+
+  
+
+
+  <script src="/js/src/bootstrap.js?v=7.0.1"></script>
+
+
+  
+  
+  
+
+<script src="//cdn1.lncld.net/static/js/3.11.1/av-min.js"></script>
+
+
+
+<script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+
+<script>
+  var GUEST = ['nick', 'mail', 'link'];
+  var guest = 'nick,mail,link';
+  guest = guest.split(',').filter(function(item) {
+    return GUEST.indexOf(item) > -1;
+  });
+  new Valine({
+    el: '#comments',
+    verify: false,
+    notify: false,
+    appId: 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz',
+    appKey: '2DDTKlnAQXmU066YfpnB843H',
+    placeholder: 'Just go go',
+    avatar: 'mm',
+    meta: guest,
+    pageSize: '10' || 10,
+    visitor: false
+  });
+</script>
+
+
+
+
+  
+
+
+  
+  <script>
+    // Popup Window;
+    var isfetched = false;
+    var isXml = true;
+    // Search DB path;
+    var search_path = "search.xml";
+    if (search_path.length === 0) {
+      search_path = "search.xml";
+    } else if (/json$/i.test(search_path)) {
+      isXml = false;
+    }
+    var path = "/" + search_path;
+    // monitor main search box;
+
+    var onPopupClose = function (e) {
+      $('.popup').hide();
+      $('#local-search-input').val('');
+      $('.search-result-list').remove();
+      $('#no-result').remove();
+      $(".local-search-pop-overlay").remove();
+      $('body').css('overflow', '');
+    }
+
+    function proceedsearch() {
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay"></div>')
+        .css('overflow', 'hidden');
+      $('.search-popup-overlay').click(onPopupClose);
+      $('.popup').toggle();
+      var $localSearchInput = $('#local-search-input');
+      $localSearchInput.attr("autocapitalize", "none");
+      $localSearchInput.attr("autocorrect", "off");
+      $localSearchInput.focus();
+    }
+
+    // search function;
+    var searchFunc = function(path, search_id, content_id) {
+      'use strict';
+
+      // start loading animation
+      $("body")
+        .append('<div class="search-popup-overlay local-search-pop-overlay">' +
+          '<div id="search-loading-icon">' +
+          '<i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>' +
+          '</div>' +
+          '</div>')
+        .css('overflow', 'hidden');
+      $("#search-loading-icon").css('margin', '20% auto 0 auto').css('text-align', 'center');
+
+      
+
+      $.ajax({
+        url: path,
+        dataType: isXml ? "xml" : "json",
+        async: true,
+        success: function(res) {
+          // get the contents from search data
+          isfetched = true;
+          $('.popup').detach().appendTo('.header-inner');
+          var datas = isXml ? $("entry", res).map(function() {
+            return {
+              title: $("title", this).text(),
+              content: $("content",this).text(),
+              url: $("url" , this).text()
+            };
+          }).get() : res;
+          var input = document.getElementById(search_id);
+          var resultContent = document.getElementById(content_id);
+          var inputEventFunction = function() {
+            var searchText = input.value.trim().toLowerCase();
+            var keywords = searchText.split(/[\s\-]+/);
+            if (keywords.length > 1) {
+              keywords.push(searchText);
+            }
+            var resultItems = [];
+            if (searchText.length > 0) {
+              // perform local searching
+              datas.forEach(function(data) {
+                var isMatch = false;
+                var hitCount = 0;
+                var searchTextCount = 0;
+                var title = data.title.trim();
+                var titleInLowerCase = title.toLowerCase();
+                var content = data.content.trim().replace(/<[^>]+>/g,"");
+                
+                var contentInLowerCase = content.toLowerCase();
+                var articleUrl = decodeURIComponent(data.url).replace(/\/{2,}/g, '/');
+                var indexOfTitle = [];
+                var indexOfContent = [];
+                // only match articles with not empty titles
+                if(title != '') {
+                  keywords.forEach(function(keyword) {
+                    function getIndexByWord(word, text, caseSensitive) {
+                      var wordLen = word.length;
+                      if (wordLen === 0) {
+                        return [];
+                      }
+                      var startPosition = 0, position = [], index = [];
+                      if (!caseSensitive) {
+                        text = text.toLowerCase();
+                        word = word.toLowerCase();
+                      }
+                      while ((position = text.indexOf(word, startPosition)) > -1) {
+                        index.push({position: position, word: word});
+                        startPosition = position + wordLen;
+                      }
+                      return index;
+                    }
+
+                    indexOfTitle = indexOfTitle.concat(getIndexByWord(keyword, titleInLowerCase, false));
+                    indexOfContent = indexOfContent.concat(getIndexByWord(keyword, contentInLowerCase, false));
+                  });
+                  if (indexOfTitle.length > 0 || indexOfContent.length > 0) {
+                    isMatch = true;
+                    hitCount = indexOfTitle.length + indexOfContent.length;
+                  }
+                }
+
+                // show search results
+
+                if (isMatch) {
+                  // sort index by position of keyword
+
+                  [indexOfTitle, indexOfContent].forEach(function (index) {
+                    index.sort(function (itemLeft, itemRight) {
+                      if (itemRight.position !== itemLeft.position) {
+                        return itemRight.position - itemLeft.position;
+                      } else {
+                        return itemLeft.word.length - itemRight.word.length;
+                      }
+                    });
+                  });
+
+                  // merge hits into slices
+
+                  function mergeIntoSlice(text, start, end, index) {
+                    var item = index[index.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    var hits = [];
+                    var searchTextCountInSlice = 0;
+                    while (position + word.length <= end && index.length != 0) {
+                      if (word === searchText) {
+                        searchTextCountInSlice++;
+                      }
+                      hits.push({position: position, length: word.length});
+                      var wordEnd = position + word.length;
+
+                      // move to next position of hit
+
+                      index.pop();
+                      while (index.length != 0) {
+                        item = index[index.length - 1];
+                        position = item.position;
+                        word = item.word;
+                        if (wordEnd > position) {
+                          index.pop();
+                        } else {
+                          break;
+                        }
+                      }
+                    }
+                    searchTextCount += searchTextCountInSlice;
+                    return {
+                      hits: hits,
+                      start: start,
+                      end: end,
+                      searchTextCount: searchTextCountInSlice
+                    };
+                  }
+
+                  var slicesOfTitle = [];
+                  if (indexOfTitle.length != 0) {
+                    slicesOfTitle.push(mergeIntoSlice(title, 0, title.length, indexOfTitle));
+                  }
+
+                  var slicesOfContent = [];
+                  while (indexOfContent.length != 0) {
+                    var item = indexOfContent[indexOfContent.length - 1];
+                    var position = item.position;
+                    var word = item.word;
+                    // cut out 100 characters
+                    var start = position - 20;
+                    var end = position + 80;
+                    if(start < 0){
+                      start = 0;
+                    }
+                    if (end < position + word.length) {
+                      end = position + word.length;
+                    }
+                    if(end > content.length){
+                      end = content.length;
+                    }
+                    slicesOfContent.push(mergeIntoSlice(content, start, end, indexOfContent));
+                  }
+
+                  // sort slices in content by search text's count and hits' count
+
+                  slicesOfContent.sort(function (sliceLeft, sliceRight) {
+                    if (sliceLeft.searchTextCount !== sliceRight.searchTextCount) {
+                      return sliceRight.searchTextCount - sliceLeft.searchTextCount;
+                    } else if (sliceLeft.hits.length !== sliceRight.hits.length) {
+                      return sliceRight.hits.length - sliceLeft.hits.length;
+                    } else {
+                      return sliceLeft.start - sliceRight.start;
+                    }
+                  });
+
+                  // select top N slices in content
+
+                  var upperBound = parseInt('1');
+                  if (upperBound >= 0) {
+                    slicesOfContent = slicesOfContent.slice(0, upperBound);
+                  }
+
+                  // highlight title and content
+
+                  function highlightKeyword(text, slice) {
+                    var result = '';
+                    var prevEnd = slice.start;
+                    slice.hits.forEach(function (hit) {
+                      result += text.substring(prevEnd, hit.position);
+                      var end = hit.position + hit.length;
+                      result += '<b class="search-keyword">' + text.substring(hit.position, end) + '</b>';
+                      prevEnd = end;
+                    });
+                    result += text.substring(prevEnd, slice.end);
+                    return result;
+                  }
+
+                  var resultItem = '';
+
+                  if (slicesOfTitle.length != 0) {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + highlightKeyword(title, slicesOfTitle[0]) + "</a>";
+                  } else {
+                    resultItem += "<li><a href='" + articleUrl + "' class='search-result-title'>" + title + "</a>";
+                  }
+
+                  slicesOfContent.forEach(function (slice) {
+                    resultItem += "<a href='" + articleUrl + "'>" +
+                      "<p class=\"search-result\">" + highlightKeyword(content, slice) +
+                      "...</p>" + "</a>";
+                  });
+
+                  resultItem += "</li>";
+                  resultItems.push({
+                    item: resultItem,
+                    searchTextCount: searchTextCount,
+                    hitCount: hitCount,
+                    id: resultItems.length
+                  });
+                }
+              })
+            };
+            if (keywords.length === 1 && keywords[0] === "") {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-search fa-5x"></i></div>'
+            } else if (resultItems.length === 0) {
+              resultContent.innerHTML = '<div id="no-result"><i class="fa fa-frown-o fa-5x"></i></div>'
+            } else {
+              resultItems.sort(function (resultLeft, resultRight) {
+                if (resultLeft.searchTextCount !== resultRight.searchTextCount) {
+                  return resultRight.searchTextCount - resultLeft.searchTextCount;
+                } else if (resultLeft.hitCount !== resultRight.hitCount) {
+                  return resultRight.hitCount - resultLeft.hitCount;
+                } else {
+                  return resultRight.id - resultLeft.id;
+                }
+              });
+              var searchResultList = '<ul class=\"search-result-list\">';
+              resultItems.forEach(function (result) {
+                searchResultList += result.item;
+              })
+              searchResultList += "</ul>";
+              resultContent.innerHTML = searchResultList;
+            }
+          }
+
+          if ('auto' === 'auto') {
+            input.addEventListener('input', inputEventFunction);
+          } else {
+            $('.search-icon').click(inputEventFunction);
+            input.addEventListener('keypress', function (event) {
+              if (event.keyCode === 13) {
+                inputEventFunction();
+              }
+            });
+          }
+
+          // remove loading animation
+          $(".local-search-pop-overlay").remove();
+          $('body').css('overflow', '');
+
+          proceedsearch();
+        }
+      });
+    }
+
+    // handle and trigger popup window;
+    $('.popup-trigger').click(function(e) {
+      e.stopPropagation();
+      if (isfetched === false) {
+        searchFunc(path, 'local-search-input', 'local-search-result');
+      } else {
+        proceedsearch();
+      };
+    });
+
+    $('.popup-btn-close').click(onPopupClose);
+    $('.popup').click(function(e){
+      e.stopPropagation();
+    });
+    $(document).on('keyup', function (event) {
+      var shouldDismissSearchPopup = event.which === 27 &&
+        $('.search-popup').is(':visible');
+      if (shouldDismissSearchPopup) {
+        onPopupClose();
+      }
+    });
+  </script>
+
+
+
+
+
+  
+  
+  <script>
+    
+    function addCount(Counter) {
+      var $visitors = $('.leancloud_visitors');
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+
+      Counter('get', '/classes/Counter', { where: JSON.stringify({ url }) })
+        .done(function({ results }) {
+          if (results.length > 0) {
+            var counter = results[0];
+            
+            Counter('put', '/classes/Counter/' + counter.objectId, JSON.stringify({ time: { '__op': 'Increment', 'amount': 1 } }))
+            
+              .done(function() {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.time + 1);
+              })
+            
+              .fail(function ({ responseJSON }) {
+                console.log('Failed to save Visitor num, with error message: ' + responseJSON.error);
+              })
+          } else {
+            
+              var $element = $(document.getElementById(url));
+              $element.find('.leancloud-visitors-count').text('Counter not initialized! More info at console err msg.');
+              console.error('ATTENTION! LeanCloud counter has security bug, see how to solve it here: https://github.com/theme-next/hexo-leancloud-counter-security. \n However, you can still use LeanCloud without security, by setting `security` option to `false`.');
+            
+          }
+        })
+        .fail(function ({ responseJSON }) {
+          console.log('LeanCloud Counter Error: ' + responseJSON.code + ' ' + responseJSON.error);
+        });
+    }
+    
+
+    $(function() {
+      $.get('https://app-router.leancloud.cn/2/route?appId=' + 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz')
+        .done(function({ api_server }) {
+          var Counter = function(method, url, data) {
+            return $.ajax({
+              method: method,
+              url: 'https://' + api_server + '/1.1' + url,
+              headers: {
+                'X-LC-Id': 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz',
+                'X-LC-Key': '2DDTKlnAQXmU066YfpnB843H',
+                'Content-Type': 'application/json',
+              },
+              data: data
+            });
+          };
+          
+            addCount(Counter);
+          
+        });
+    });
+  </script>
+
+
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+  
+  	 
+
+  
+  <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.1.js"></script>
+  <script>AV.initialize("HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz", "2DDTKlnAQXmU066YfpnB843H");</script>
+  <script>
+    function showTime(Counter) {
+      var query = new AV.Query(Counter);
+      var entries = [];
+      var $visitors = $(".leancloud_visitors");
+
+      $visitors.each(function () {
+        entries.push( $(this).attr("id").trim() );
+      });
+
+      query.containedIn('url', entries);
+      query.find()
+        .done(function (results) {
+          var COUNT_CONTAINER_REF = '.leancloud-visitors-count';
+
+          if (results.length === 0) {
+            $visitors.find(COUNT_CONTAINER_REF).text(0);
+            return;
+          }
+
+          for (var i = 0; i < results.length; i++) {
+            var item = results[i];
+            var url = item.get('url');
+            var time = item.get('time');
+            var element = document.getElementById(url);
+
+            $(element).find(COUNT_CONTAINER_REF).text(time);
+          }
+          for(var i = 0; i < entries.length; i++) {
+            var url = entries[i];
+            var element = document.getElementById(url);
+            var countSpan = $(element).find(COUNT_CONTAINER_REF);
+            if( countSpan.text() == '') {
+              countSpan.text(0);
+            }
+          }
+        })
+        .fail(function (object, error) {
+          console.log("Error: " + error.code + " " + error.message);
+        });
+    }
+
+    function addCount(Counter) {
+      var $visitors = $(".leancloud_visitors");
+      var url = $visitors.attr('id').trim();
+      var title = $visitors.attr('data-flag-title').trim();
+      var query = new AV.Query(Counter);
+
+      query.equalTo("url", url);
+      query.find({
+        success: function(results) {
+          if (results.length > 0) {
+            var counter = results[0];
+            counter.fetchWhenSave(true);
+            counter.increment("time");
+            counter.save(null, {
+              success: function(counter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(counter.get('time'));
+              },
+              error: function(counter, error) {
+                console.log('Failed to save Visitor num, with error message: ' + error.message);
+              }
+            });
+          } else {
+            var newcounter = new Counter();
+            /* Set ACL */
+            var acl = new AV.ACL();
+            acl.setPublicReadAccess(true);
+            acl.setPublicWriteAccess(true);
+            newcounter.setACL(acl);
+            /* End Set ACL */
+            newcounter.set("title", title);
+            newcounter.set("url", url);
+            newcounter.set("time", 1);
+            newcounter.save(null, {
+              success: function(newcounter) {
+                var $element = $(document.getElementById(url));
+                $element.find('.leancloud-visitors-count').text(newcounter.get('time'));
+              },
+              error: function(newcounter, error) {
+                console.log('Failed to create');
+              }
+            });
+          }
+        },
+        error: function(error) {
+          console.log('Error:' + error.code + " " + error.message);
+        }
+      });
+    }
+
+    $(function() {
+      var Counter = AV.Object.extend("Counter");
+      if ($('.leancloud_visitors').length == 1) {
+        addCount(Counter);
+      } else if ($('.post-title-link').length > 1) {
+        showTime(Counter);
+      }
+    });
+  </script>
+
+
+  
+  
+  <!-- �������� -->
+  <script type="text/javascript" src="/js/src/particle.js"></script>
+
+  
+</body>
+</html>
