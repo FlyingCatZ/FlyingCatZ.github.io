@@ -1022,8 +1022,8 @@
     el: '#comments',
     verify: false,
     notify: false,
-    appId: 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz',
-    appKey: '2DDTKlnAQXmU066YfpnB843H',
+    appId: 'wiTxydzgpKFN3VspVy52D7kQ-gzGzoHsz',
+    appKey: 'STRHgv6GsNi2fkGWE2jKgR7y',
     placeholder: 'Just go go',
     avatar: 'mm',
     meta: guest,
@@ -1402,15 +1402,15 @@
     
 
     $(function() {
-      $.get('https://app-router.leancloud.cn/2/route?appId=' + 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz')
+      $.get('https://app-router.leancloud.cn/2/route?appId=' + 'wiTxydzgpKFN3VspVy52D7kQ-gzGzoHsz')
         .done(function({ api_server }) {
           var Counter = function(method, url, data) {
             return $.ajax({
               method: method,
               url: 'https://' + api_server + '/1.1' + url,
               headers: {
-                'X-LC-Id': 'HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz',
-                'X-LC-Key': '2DDTKlnAQXmU066YfpnB843H',
+                'X-LC-Id': 'wiTxydzgpKFN3VspVy52D7kQ-gzGzoHsz',
+                'X-LC-Key': 'STRHgv6GsNi2fkGWE2jKgR7y',
                 'Content-Type': 'application/json',
               },
               data: data
@@ -1455,7 +1455,7 @@
 
   
   <script src="https://cdn1.lncld.net/static/js/av-core-mini-0.6.1.js"></script>
-  <script>AV.initialize("HsAKOSnUeWPYs9bgwINHE3C3-gzGzoHsz", "2DDTKlnAQXmU066YfpnB843H");</script>
+  <script>AV.initialize("wiTxydzgpKFN3VspVy52D7kQ-gzGzoHsz", "STRHgv6GsNi2fkGWE2jKgR7y");</script>
   <script>
     function showTime(Counter) {
       var query = new AV.Query(Counter);
